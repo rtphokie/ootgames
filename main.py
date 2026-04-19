@@ -1,4 +1,5 @@
 from datetime import date
+import os
 
 import requests
 from flask import Flask, jsonify, render_template_string, request
@@ -894,4 +895,4 @@ def get_game_score(game_id: int):
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True, port=os.getenv("PORT", default=5000))
