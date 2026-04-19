@@ -1,9 +1,9 @@
 [project]
 name = "out-of-town-games"
-version = "0.1.0"
+version = "0.1.1"
 description = "emulates the scoreboards seen in ballparks like Boston, Chicago, Houston, Denver, etc.  "
 requires-python = ">=3.11"
 dependencies = [
-    "flask>=3.1.3",
-    "requests>=2.32.5",
+    "flask",
+    "requests",
 ]
