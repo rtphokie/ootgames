@@ -76,7 +76,7 @@
             <tr>
                 <td><span class="value">{{ pitcher_last_name }}</span></td>
                 <td>{% if pitch_count %}<span class="muted">P:</span><span class="muted">{{ pitch_count }}</span>{% endif %}</td>
-                <td colspan="2" class="right"><span class="value">{{ last_pitch_meta }}</span></td>
+                <td colspan="2" class="right"><span class="last-play">{{ last_pitch_meta }}</span></td>
             </tr>
             <tr>
                 <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %}&nbsp;{% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}</td>

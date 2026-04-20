@@ -1,25 +1,51 @@
 # Out of Town Games
 
-A minimal MLB scoreboard web app, inspired by the out-of-town scoreboards found in ballparks like Fenway Park, Wrigley Field, and Minute Maid Park. Data is sourced from the [MLB Stats API](https://github.com/toddrob99/MLB-StatsAPI/wiki/Endpoints).
+Out of Town Games is a Flask app that presents MLB schedule, game, and standings views in a compact dark scoreboard style. Data is sourced from the MLB Stats API.
 
-## Pages
+## Routes
 
 | Route | Description |
 |---|---|
-| `/` | Schedule for the current day — scores, inning, baserunners, and outs for every MLB game |
-| `/standings` | Division standings for AL East, AL West, NL East, and NL West |
-| `/games/<id>/score` | Live scoreboard for a single game — score, inning, pitch info, win probability |
+| `/` | Daily game index with live state, bases/outs, inning status, and compact win-probability sparkline cues |
+| `/games/<id>/score` | Single-game scoreboard with pitch context, batter/pitcher details, and a bottom delta win-probability chart |
+| `/standings` | AL/NL East and West standings |
 
-## Features
+## Current Behavior
 
-- Scores, inning state (top/bottom), baserunners, and outs on the schedule page
-- Pregame start times displayed in the user's local timezone
-- Previous/next day navigation on the schedule page
-- Live win probability on the scoreboard page for in-progress games
-- Auto-refresh every 15 seconds (schedule) and 5–10 seconds (scoreboard)
-- Browser timezone detection — defaults to `America/New_York`
+- Index page:
+	- Shows today by default and supports day navigation.
+	- Orders games as: in-progress, not-started, then final.
+	- Non-started games are non-clickable.
+	- Uses responsive 1/2/3-column card layout.
+- Game page:
+	- Shows batter, batting order slot, AVG/OBP/OPS, pitcher, pitch count, count, bases, and outs.
+	- Hides outs when inning context does not indicate top/bottom.
+	- Refreshes every 5s by default, 3s with runner on third, and may back off to 10s when state is unchanged.
+	- Stops auto-refresh when game is final.
+	- Bottom chart displays win-probability delta over time (away-home) with inning half markers.
+- Standings page:
+	- Auto-refreshes with shared bottom progress bar component.
 
-## Running locally
+## Caching
+
+- Schedule (`/`) API calls are uncached for freshest game state.
+- Standings API responses are cached in memory (TTL 1 hour).
+- Standings cache is invalidated when newly final games are detected.
+- Win-probability history is cached on disk in `win_prob_cache.json` and pruned to keep at most the current plus most recent game per team.
+
+## Project Layout
+
+- `main.py` - Flask routes and page composition
+- `utils.py` - API helpers, formatting, win-probability caching, sparkline/chart data shaping
+- `templates/index.html` - Daily game index template
+- `templates/game.html` - Single-game scoreboard template
+- `templates/standings.html` - Standings template
+- `static/index.css` - Index styles
+- `static/game.css` - Game page styles
+- `static/standings.css` - Standings styles
+- `static/refresh_bar.css` - Shared refresh progress bar styles
+
+## Run Locally
 
 ```bash
 python -m venv .venv
@@ -28,19 +54,19 @@ pip install -r requirements.txt
 python main.py
 ```
 
-The app starts on [http://localhost:5000](http://localhost:5000).
+App URL: `http://localhost:5000`
 
 ## Deployment
 
-Deployed on [Railway](https://railway.app) using gunicorn:
+Configured for Railway. Typical process command:
 
-```
+```bash
 gunicorn main:app
 ```
 
 ## Stack
 
-- **Python 3.11+** / **Flask** — web framework
-- **MLB Stats API** — schedule, live game feed, win probability, standings
-- **Vanilla HTML/CSS/JS** — no frontend framework; all styles in `static/`
-- **Jinja2** — server-side templating in `templates/`
+- Python 3.11+
+- Flask + Jinja2
+- MLB Stats API
+- Vanilla HTML/CSS/JS
