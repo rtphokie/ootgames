@@ -561,6 +561,16 @@ def get_game_score(game_id: int):
         is_active=is_active,
         outs=outs,
         show_outs=inning_half in ("top", "bottom"),
+        is_final=(
+            (status or "").lower().startswith("final")
+            or (status or "").lower().startswith("game over")
+            or (status or "").lower().startswith("completed")
+        ),
+        home_wins=(
+            home_score is not None
+            and away_score is not None
+            and home_score > away_score
+        ),
     )
 
 
