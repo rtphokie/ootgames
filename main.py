@@ -9,6 +9,14 @@ app = Flask(__name__)
 MLB_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
 MLB_GAME_FEED_URL = "https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
 MLB_WIN_PROBABILITY_URL = "https://statsapi.mlb.com/api/v1/game/{game_pk}/winProbability"
+MLB_STANDINGS_URL = "https://statsapi.mlb.com/api/v1/standings"
+
+STANDINGS_DIVISIONS = [
+    (204, "NL East"),
+    (203, "NL West"),
+    (201, "AL East"),
+    (200, "AL West"),
+]
 
 
 def _team_logo_url(team_id: int | None) -> str:
@@ -120,6 +128,12 @@ def _current_win_probability(game_pk: int | None) -> tuple[float | None, float |
         return None, None
 
     return float(home_probability), float(away_probability)
+
+
+def _record_string(wins, losses) -> str:
+    if wins is None or losses is None:
+        return ""
+    return f"{wins}-{losses}"
 
 
 @app.get("/")
@@ -240,6 +254,56 @@ def index():
         timezone=timezone,
         games=games,
     )
+
+
+@app.get("/standings")
+def standings():
+    timezone = _normalized_timezone(request.args.get("tz") or request.args.get("timezone"))
+    season = str(datetime.now(ZoneInfo(timezone)).year)
+
+    try:
+        response = requests.get(
+            MLB_STANDINGS_URL,
+            params={"leagueId": "103,104", "standingsTypes": "regularSeason", "season": season},
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        return jsonify({"error": "Failed to reach MLB API", "details": str(exc)}), 502
+
+    if not response.ok:
+        return jsonify(
+            {
+                "error": "MLB API request failed",
+                "status_code": response.status_code,
+                "body": response.text,
+            }
+        ), 502
+
+    records_by_division = {
+        (record.get("division") or {}).get("id"): record for record in response.json().get("records", [])
+    }
+
+    divisions = []
+    for division_id, division_name in STANDINGS_DIVISIONS:
+        division_record = records_by_division.get(division_id) or {}
+        teams = []
+        for team_record in division_record.get("teamRecords") or []:
+            team = team_record.get("team") or {}
+            wins = team_record.get("wins")
+            losses = team_record.get("losses")
+            teams.append(
+                {
+                    "name": team.get("name") or "",
+                    "logo_url": _team_logo_url(team.get("id")),
+                    "record": _record_string(wins, losses),
+                }
+            )
+        divisions.append({"name": division_name, "teams": teams})
+
+    if request.args.get("format") == "json":
+        return jsonify({"season": season, "timezone": timezone, "divisions": divisions})
+
+    return render_template("standings.html", season=season, timezone=timezone, divisions=divisions)
 
 
 @app.get("/games/<int:game_id>/score")

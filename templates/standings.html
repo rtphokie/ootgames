@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MLB Standings</title>
+    <script>
+        (function () {
+            const url = new URL(window.location.href);
+            const hasTimezone = url.searchParams.has("tz") || url.searchParams.has("timezone");
+            if (hasTimezone) return;
+
+            const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (!browserTimezone) return;
+
+            url.searchParams.set("tz", browserTimezone);
+            window.location.replace(url.toString());
+        }());
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='standings.css') }}">
+</head>
+<body>
+    <div class="wrap">
+        <div class="header-row">
+            <div>
+                <div class="eyebrow">{{ season }} Season</div>
+                <h1>Standings</h1>
+            </div>
+            <a class="return-link" href="/?tz={{ timezone }}" aria-label="Back to games">&#8617;</a>
+        </div>
+
+        <div class="division-grid">
+            {% for division in divisions %}
+                <section class="division-card" aria-label="{{ division.name }} standings">
+                    <h2>{{ division.name }}</h2>
+                    <div class="team-list">
+                        {% for team in division.teams %}
+                            <div class="team-row">
+                                <div class="team-main">
+                                    <img class="team-logo" src="{{ team.logo_url }}" alt="{{ team.name }} logo" onerror="this.style.display='none'">
+                                    <span class="team-name">{{ team.name }}</span>
+                                </div>
+                                <span class="team-record">{{ team.record }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
