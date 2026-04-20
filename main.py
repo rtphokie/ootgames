@@ -183,7 +183,9 @@ def index():
             game_pk = game.get("gamePk")
             if is_live and game_pk:
                 home_win_probability, away_win_probability = _current_win_probability(
-                    game_pk
+                    game_pk,
+                    home_team_id=(home.get("team") or {}).get("id"),
+                    away_team_id=(away.get("team") or {}).get("id"),
                 )
                 home_win_probability_trend = _win_probability_trend(game_pk, "home")
                 away_win_probability_trend = _win_probability_trend(game_pk, "away")
@@ -478,7 +480,9 @@ def get_game_score(game_id: int):
     ).lower() == "live"
     if is_active:
         home_win_probability, away_win_probability = _current_win_probability(
-            payload.get("gamePk", game_id)
+            payload.get("gamePk", game_id),
+            home_team_id=home_team.get("id"),
+            away_team_id=away_team.get("id"),
         )
     else:
         home_win_probability, away_win_probability = None, None

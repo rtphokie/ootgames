@@ -1,3 +1,5 @@
+import json
+import os
 import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -6,10 +8,65 @@ import requests
 
 from config import MLB_WIN_PROBABILITY_URL
 
-_WIN_PROB_CACHE: dict[int, dict] = {}
 _WIN_PROB_MIN_FETCH_SECONDS = 3
 _WIN_PROB_TREND_WINDOW_SECONDS = 1800
 _WIN_PROB_TREND_MAX_POINTS = 24
+_WIN_PROB_MAX_GAMES_PER_TEAM = 2
+
+_CACHE_FILE = os.path.join(os.path.dirname(__file__), "win_prob_cache.json")
+
+# In-memory mirror of the disk cache, loaded once at startup.
+_WIN_PROB_CACHE: dict = {"games": {}, "team_games": {}}
+
+
+def _load_disk_cache() -> None:
+    """Load the disk cache into memory. Called once at import time."""
+    global _WIN_PROB_CACHE
+    try:
+        with open(_CACHE_FILE, "r") as f:
+            data = json.load(f)
+        if isinstance(data, dict) and "games" in data and "team_games" in data:
+            # Restore history tuples (JSON stores them as lists).
+            for entry in data["games"].values():
+                entry["history"] = [tuple(s) for s in entry.get("history", [])]
+            _WIN_PROB_CACHE = data
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
+
+def _save_disk_cache() -> None:
+    """Persist the in-memory cache to disk."""
+    try:
+        with open(_CACHE_FILE, "w") as f:
+            json.dump(_WIN_PROB_CACHE, f)
+    except OSError:
+        pass
+
+
+def _prune_cache(home_team_id: int | None, away_team_id: int | None, game_pk: int) -> None:
+    """Ensure each team retains at most _WIN_PROB_MAX_GAMES_PER_TEAM game entries."""
+    team_games = _WIN_PROB_CACHE["team_games"]
+    games = _WIN_PROB_CACHE["games"]
+    key = str(game_pk)
+
+    for team_id in filter(None, [home_team_id, away_team_id]):
+        tid = str(team_id)
+        known = team_games.get(tid, [])
+        if key not in known:
+            known.append(key)
+        # Keep only the most recent N game_pks (last N in insertion order).
+        if len(known) > _WIN_PROB_MAX_GAMES_PER_TEAM:
+            removed = known[: len(known) - _WIN_PROB_MAX_GAMES_PER_TEAM]
+            known = known[len(known) - _WIN_PROB_MAX_GAMES_PER_TEAM :]
+            # Remove games no longer referenced by any team.
+            all_referenced = {pk for pks in team_games.values() for pk in pks}
+            for old_pk in removed:
+                if old_pk not in all_referenced:
+                    games.pop(old_pk, None)
+        team_games[tid] = known
+
+
+_load_disk_cache()
 
 
 def _team_logo_url(team_id: int | None) -> str:
@@ -124,12 +181,17 @@ def _sparkline_points(
     return " ".join(points)
 
 
-def _current_win_probability(game_pk: int | None) -> tuple[float | None, float | None]:
+def _current_win_probability(
+    game_pk: int | None,
+    home_team_id: int | None = None,
+    away_team_id: int | None = None,
+) -> tuple[float | None, float | None]:
     if not game_pk:
         return None, None
 
     now = time.time()
-    cache_entry = _WIN_PROB_CACHE.get(game_pk)
+    key = str(game_pk)
+    cache_entry = _WIN_PROB_CACHE["games"].get(key)
     if cache_entry and (now - cache_entry.get("fetched_at", 0)) < _WIN_PROB_MIN_FETCH_SECONDS:
         return cache_entry.get("home"), cache_entry.get("away")
 
@@ -178,12 +240,15 @@ def _current_win_probability(game_pk: int | None) -> tuple[float | None, float |
     history = [sample for sample in history if sample[0] >= cutoff]
     history = history[-_WIN_PROB_TREND_MAX_POINTS:]
 
-    _WIN_PROB_CACHE[game_pk] = {
+    _WIN_PROB_CACHE["games"][key] = {
         "fetched_at": now,
         "home": home_probability,
         "away": away_probability,
         "history": history,
     }
+
+    _prune_cache(home_team_id, away_team_id, game_pk)
+    _save_disk_cache()
 
     return home_probability, away_probability
 
@@ -192,7 +257,7 @@ def _win_probability_trend(game_pk: int | None, team: str) -> dict[str, str]:
     if not game_pk:
         return {"points": "", "direction": "flat"}
 
-    cache_entry = _WIN_PROB_CACHE.get(game_pk)
+    cache_entry = _WIN_PROB_CACHE["games"].get(str(game_pk))
     if not cache_entry:
         return {"points": "", "direction": "flat"}
 
