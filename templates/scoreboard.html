@@ -69,7 +69,7 @@
     <div class="board-wrap">
         <table class="board" aria-label="MLB scoreboard">
             <tr>
-                <td colspan="2"><span class="value">{{ batter_last_name }}</span></td>
+                <td colspan="2"><span class="value">{{ batter_last_name }}</span>{% if batter_avg or batter_obp or batter_ops %}<span class="batter-stat">{{ batter_avg }}/{{ batter_obp }}/{{ batter_ops }}</span>{% endif %}</td>
                 <td colspan="2" class="right"><span class="value">{{ last_play_text }}</span></td>
             </tr>
             <tr>

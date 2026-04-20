@@ -445,17 +445,27 @@ def get_game_score(game_id: int):
 
     # Total pitches thrown by the current pitcher, sourced from the boxscore.
     pitch_count = ""
+    batter_avg = ""
+    batter_obp = ""
+    batter_ops = ""
+    batter_id = batter.get("id")
     pitcher_id = pitcher.get("id")
-    if pitcher_id is not None:
-        boxscore_teams = (live_data.get("boxscore") or {}).get("teams") or {}
-        for side in ("home", "away"):
-            players = (boxscore_teams.get(side) or {}).get("players") or {}
-            key = f"ID{pitcher_id}"
-            if key in players:
-                stats = (players[key].get("stats") or {}).get("pitching") or {}
+    boxscore_teams = (live_data.get("boxscore") or {}).get("teams") or {}
+    for side in ("home", "away"):
+        players = (boxscore_teams.get(side) or {}).get("players") or {}
+        if batter_id is not None:
+            batter_key = f"ID{batter_id}"
+            if batter_key in players:
+                season = (players[batter_key].get("seasonStats") or {}).get("batting") or {}
+                batter_avg = season.get("avg", "")
+                batter_obp = season.get("obp", "")
+                batter_ops = season.get("ops", "")
+        if pitcher_id is not None:
+            pitcher_key = f"ID{pitcher_id}"
+            if pitcher_key in players:
+                stats = (players[pitcher_key].get("stats") or {}).get("pitching") or {}
                 if stats.get("numberOfPitches") is not None:
                     pitch_count = stats.get("numberOfPitches")
-                break
 
     home_abbr = home_team.get("abbreviation") or "HOME"
     away_abbr = away_team.get("abbreviation") or "AWAY"
@@ -522,6 +532,9 @@ def get_game_score(game_id: int):
         status=status,
         state_token=state_token,
         batter_last_name=batter_last_name,
+        batter_avg=batter_avg,
+        batter_obp=batter_obp,
+        batter_ops=batter_ops,
         last_play_text=last_play_text,
         pitcher_last_name=pitcher_last_name,
         pitch_count=pitch_count,
