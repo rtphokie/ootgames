@@ -184,9 +184,9 @@ body {
     transition: width 0.1s linear;
 }
 .return-link {
-    position: absolute;
-    left: 10px;
-    top: 8px;
+    position: fixed;
+    left: 2px;
+    top: 2px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
