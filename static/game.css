@@ -38,6 +38,15 @@ body {
     text-transform: uppercase;
     margin-bottom: 8px;
 }
+.game-status-final {
+    text-align: center;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
 .board td {
     border: none;
     padding: 10px;
@@ -239,6 +248,10 @@ body {
 }
 .wp-half-marker {
     fill: #7e7e7e;
+}
+.wp-inning-marker {
+    stroke: #7e7e7e;
+    stroke-width: 1;
 }
 .wp-half-label {
     fill: #8a8a8a;

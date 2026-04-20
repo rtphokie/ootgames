@@ -19,10 +19,11 @@ from utils import (
     _win_probability_area_chart,
 )
 
-from config import MLB_SCHEDULE_URL, MLB_STANDINGS_URL, MLB_GAME_FEED_URL
+from config import MLB_SCHEDULE_URL, MLB_STANDINGS_URL, MLB_GAME_FEED_URL, MLB_SPORTS_URL
 
 import requests
 from flask import Flask, jsonify, render_template, request
+from api_logging import log_statsapi_call
 
 # MLB Stats API docs: https://github.com/toddrob99/MLB-StatsAPI/wiki/Endpoints
 
@@ -53,6 +54,16 @@ def _ordinal(value: int) -> str:
 def _is_warmup_status(detailed_state: str | None) -> bool:
     state = (detailed_state or "").strip().lower()
     return "warm" in state
+
+
+def _is_postponed_status(detailed_state: str | None) -> bool:
+    state = (detailed_state or "").strip().lower()
+    return "postpon" in state
+
+
+def _is_cancelled_status(detailed_state: str | None) -> bool:
+    state = (detailed_state or "").strip().lower()
+    return "cancel" in state
 
 # Division IDs to display on /standings, in render order.
 # Verified against /api/v1/standings: AL West=200, AL East=201, NL West=203, NL East=204.
@@ -96,6 +107,7 @@ def _fetch_statsapi_json(
             return cached["payload"], None
 
     try:
+        log_statsapi_call(url, params=params)
         response = requests.get(
             url,
             params=params,
@@ -141,11 +153,15 @@ def otg():
     Query params:
       date (YYYY-MM-DD): date to display; defaults to today in the user's timezone.
       tz / timezone: IANA timezone string; defaults to America/New_York.
+            sportId (int): sports id from StatsAPI /sports endpoint; defaults to 1 (MLB).
       format=json: return raw game data as JSON instead of HTML.
     """
     timezone = _normalized_timezone(
         request.args.get("tz") or request.args.get("timezone")
     )
+    sport_id = _safe_int(request.args.get("sportId"), 1)
+    if sport_id <= 0:
+        sport_id = 1
     today_date = _normalized_iso_date(None, timezone)
     selected_date = _normalized_iso_date(request.args.get("date"), timezone)
     previous_date = _shift_iso_date(selected_date, -1)
@@ -155,7 +171,7 @@ def otg():
     schedule_payload, schedule_error = _fetch_statsapi_json(
         MLB_SCHEDULE_URL,
         params={
-            "sportId": 1,
+            "sportId": sport_id,
             "startDate": selected_date,
             "endDate": selected_date,
             "hydrate": "team,linescore",  # include team info and live linescore
@@ -166,16 +182,48 @@ def otg():
         status_code, body = schedule_error
         return jsonify(body), status_code
 
-    standings_payload, standings_error = _fetch_statsapi_json(
-        MLB_STANDINGS_URL,
-        params={
-            "leagueId": "103,104",
-            "standingsTypes": "regularSeason",
-            "season": season,
-        },
+    sports_payload, sports_error = _fetch_statsapi_json(
+        MLB_SPORTS_URL,
+        params={"activeStatus": "active"},
         timeout=10,
-        cache_ttl_seconds=3600,
+        cache_ttl_seconds=86400,
     )
+
+    sport_options: list[dict[str, int | str]] = []
+    if not sports_error and sports_payload:
+        for sport in sports_payload.get("sports", []):
+            sport_raw_id = sport.get("id")
+            sport_name = (sport.get("name") or "").strip()
+            try:
+                sport_option_id = int(sport_raw_id)
+            except (TypeError, ValueError):
+                continue
+            if not sport_name:
+                continue
+            sport_options.append({"id": sport_option_id, "name": sport_name})
+
+    if not sport_options:
+        sport_options = [{"id": 1, "name": "Major League Baseball"}]
+
+    known_sport_ids = {int(s["id"]) for s in sport_options}
+    if sport_id not in known_sport_ids:
+        sport_options.append({"id": sport_id, "name": f"Sport {sport_id}"})
+
+    sport_options.sort(key=lambda s: str(s["name"]).lower())
+
+    standings_payload = None
+    standings_error = None
+    if sport_id == 1:
+        standings_payload, standings_error = _fetch_statsapi_json(
+            MLB_STANDINGS_URL,
+            params={
+                "leagueId": "103,104",
+                "standingsTypes": "regularSeason",
+                "season": season,
+            },
+            timeout=10,
+            cache_ttl_seconds=3600,
+        )
 
     team_standings: dict[int, dict[str, str]] = {}
     if not standings_error and standings_payload:
@@ -225,6 +273,9 @@ def otg():
             is_not_started = abstract_state == "preview"
             is_live = abstract_state == "live"
             is_warmup = _is_warmup_status(detailed_state)
+            is_postponed = _is_postponed_status(detailed_state)
+            is_cancelled = _is_cancelled_status(detailed_state)
+            suppress_diamond = is_postponed or is_cancelled
             start_time_local = _gate_time_start(game.get("gameDate"), timezone=timezone)
             starts_within_next_hour = _is_within_next_hour(
                 game.get("gameDate"), timezone=timezone
@@ -318,6 +369,9 @@ def otg():
                     ),
                     "is_not_started": is_not_started,
                     "is_warmup": is_warmup,
+                    "is_postponed": is_postponed,
+                    "is_cancelled": is_cancelled,
+                    "suppress_diamond": suppress_diamond,
                     "start_time_local": start_time_local,
                     "starts_within_next_hour": (
                         starts_within_next_hour if is_not_started else False
@@ -365,6 +419,8 @@ def otg():
             {
                 "date": selected_date,
                 "timezone": timezone,
+                "sportId": sport_id,
+                "sportOptions": sport_options,
                 "count": len(games),
                 "games": games,
                 "routes": [
@@ -383,6 +439,8 @@ def otg():
         previous_date=previous_date,
         next_date=next_date,
         timezone=timezone,
+        sport_id=sport_id,
+        sport_options=sport_options,
         games=games,
     )
 
@@ -470,9 +528,13 @@ def get_game_score(game_id: int):
     return_timezone = _normalized_timezone(
         request.args.get("tz") or request.args.get("timezone")
     )
+    return_sport_id = _safe_int(request.args.get("sportId"), 1)
+    if return_sport_id <= 0:
+        return_sport_id = 1
     return_date = _normalized_iso_date(request.args.get("date"), return_timezone)
 
     try:
+        log_statsapi_call(MLB_GAME_FEED_URL.format(game_pk=game_id))
         response = requests.get(
             MLB_GAME_FEED_URL.format(game_pk=game_id),
             timeout=10,
@@ -498,6 +560,9 @@ def get_game_score(game_id: int):
     game_data = payload.get("gameData", {})
     status = (game_data.get("status") or {}).get("detailedState")
     is_warmup = _is_warmup_status(status)
+    is_postponed = _is_postponed_status(status)
+    is_cancelled = _is_cancelled_status(status)
+    suppress_diamond = is_postponed or is_cancelled
     teams = game_data.get("teams", {})
     home_team = teams.get("home", {})
     away_team = teams.get("away", {})
@@ -618,17 +683,15 @@ def get_game_score(game_id: int):
     # Build top/bottom inning markers to label the chart x-axis timeline.
     inning_count = max(_safe_int(inning_number, 0), len(linescore.get("innings") or []))
     inning_count = max(1, min(inning_count, 15))
-    total_halves = inning_count * 2
     axis_left = 36.0
     axis_width = 488.0
-    half_step = axis_width / (total_halves + 1)
+    inning_step = axis_width / inning_count
     chart_inning_markers = []
-    for idx in range(total_halves):
+    for inning in range(1, inning_count + 1):
         chart_inning_markers.append(
             {
-                "x": axis_left + ((idx + 1) * half_step),
-                "inning": (idx // 2) + 1,
-                "half": "top" if idx % 2 == 0 else "bottom",
+                "x": axis_left + ((inning - 1) * inning_step),
+                "inning": inning,
             }
         )
 
@@ -673,9 +736,13 @@ def get_game_score(game_id: int):
         game_pk=game_pk,
         return_date=return_date,
         return_timezone=return_timezone,
+        return_sport_id=return_sport_id,
         status=status,
         state_token=state_token,
         is_warmup=is_warmup,
+        is_postponed=is_postponed,
+        is_cancelled=is_cancelled,
+        suppress_diamond=suppress_diamond,
         batter_last_name=batter_last_name,
         batter_order=batter_order,
         batter_avg=batter_avg,

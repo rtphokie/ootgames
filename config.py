@@ -5,3 +5,4 @@ MLB_WIN_PROBABILITY_URL = (
     "https://statsapi.mlb.com/api/v1/game/{game_pk}/winProbability"
 )
 MLB_STANDINGS_URL = "https://statsapi.mlb.com/api/v1/standings"
+MLB_SPORTS_URL = "https://statsapi.mlb.com/api/v1/sports"

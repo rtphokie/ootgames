@@ -68,7 +68,9 @@
         </div>
     </div>
     <div class="board-wrap">
-        {% if is_warmup %}
+        {% if is_final %}
+            <div class="game-status-final">Final</div>
+        {% elif is_warmup %}
             <div class="game-status-warmup">Warm-up</div>
         {% endif %}
         <table class="board" aria-label="MLB scoreboard">
@@ -99,11 +101,13 @@
                                 {% endif %}
                             </div>
                             <div class="diamond-stack">
+                                {% if not suppress_diamond %}
                                 <div class="bases" aria-label="Bases">
                                     <div class="base second {% if second_base %}on{% endif %}"></div>
                                     <div class="base third {% if third_base %}on{% endif %}"></div>
                                     <div class="base first {% if first_base %}on{% endif %}"></div>
                                 </div>
+                                {% endif %}
                                 {% if show_outs %}
                                 <div class="outs" aria-label="Outs">
                                     <div class="out {% if outs >= 1 %}on{% endif %}"></div>
@@ -139,13 +143,8 @@
                                 <text class="wp-label" x="4" y="70">{{ away_abbr }}</text>
                                 <text class="wp-label" x="4" y="90">{{ home_abbr }}</text>
                                 {% for marker in chart_inning_markers %}
-                                    {% if marker.half == 'top' %}
-                                        <polygon class="wp-half-marker" points="{{ marker.x - 3 }},70 {{ marker.x + 3 }},70 {{ marker.x }},66"></polygon>
-                                        <text class="wp-half-label" x="{{ marker.x }}" y="64" text-anchor="middle">{{ marker.inning }}</text>
-                                    {% else %}
-                                        <polygon class="wp-half-marker" points="{{ marker.x - 3 }},80 {{ marker.x + 3 }},80 {{ marker.x }},84"></polygon>
-                                        <text class="wp-half-label" x="{{ marker.x }}" y="94" text-anchor="middle">{{ marker.inning }}</text>
-                                    {% endif %}
+                                    <line class="wp-inning-marker" x1="{{ marker.x }}" y1="71" x2="{{ marker.x }}" y2="79"></line>
+                                    <text class="wp-half-label" x="{{ marker.x }}" y="67" text-anchor="middle">{{ marker.inning }}</text>
                                 {% endfor %}
                                 <path class="wp-delta-area-up" clip-path="url(#wp-clip-upper)" d="{{ win_probability_chart.delta_area }}"></path>
                                 <path class="wp-delta-area-down" clip-path="url(#wp-clip-lower)" d="{{ win_probability_chart.delta_area }}"></path>
@@ -158,7 +157,7 @@
                 </td>
             </tr>
         </table>
-        <a class="return-link" href="/otg?date={{ return_date }}&amp;tz={{ return_timezone }}" aria-label="Back to schedule">&larr;</a>
+        <a class="return-link" href="/otg?date={{ return_date }}&amp;tz={{ return_timezone }}&amp;sportId={{ return_sport_id }}" aria-label="Back to schedule">&larr;</a>
     </div>
 </body>
 </html>

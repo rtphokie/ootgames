@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
+from api_logging import log_statsapi_call
 
 from config import MLB_WIN_PROBABILITY_URL
 
@@ -216,8 +217,10 @@ def _current_win_probability(
         return cache_entry.get("home"), cache_entry.get("away")
 
     try:
+        win_prob_url = MLB_WIN_PROBABILITY_URL.format(game_pk=game_pk)
+        log_statsapi_call(win_prob_url)
         response = requests.get(
-            MLB_WIN_PROBABILITY_URL.format(game_pk=game_pk),
+            win_prob_url,
             timeout=3,
         )
     except requests.RequestException:

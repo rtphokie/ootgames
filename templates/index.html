@@ -97,16 +97,26 @@
         <div class="sub sub-nav">
             <a class="date-nav-link standings-link" href="/standings?tz={{ timezone }}" aria-label="Standings">&#9776;</a>
             <div class="date-nav-group">
-                <a class="date-nav-link" href="/otg?date={{ previous_date }}&amp;tz={{ timezone }}" aria-label="Previous day">&larr;</a>
+                <a class="date-nav-link" href="/otg?date={{ previous_date }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}" aria-label="Previous day">&larr;</a>
                 <div class="sub-summary">{{ selected_date }}</div>
-                <a class="date-nav-link" href="/otg?date={{ next_date }}&amp;tz={{ timezone }}" aria-label="Next day">&rarr;</a>
-                <a class="date-nav-link date-nav-link-today" href="/otg?date={{ today_date }}&amp;tz={{ timezone }}" aria-label="Today">Today</a>
+                <a class="date-nav-link" href="/otg?date={{ next_date }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}" aria-label="Next day">&rarr;</a>
+                <a class="date-nav-link date-nav-link-today" href="/otg?date={{ today_date }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}" aria-label="Today">Today</a>
+                <form class="sport-filter-form" action="/otg" method="get">
+                    <input type="hidden" name="date" value="{{ selected_date_iso }}">
+                    <input type="hidden" name="tz" value="{{ timezone }}">
+                    <label class="sport-filter-label" for="sport-id-select">Sport</label>
+                    <select id="sport-id-select" name="sportId" class="sport-filter-select" onchange="this.form.submit()" aria-label="Sport ID">
+                        {% for sport in sport_options %}
+                            <option value="{{ sport.id }}" {% if sport_id == sport.id %}selected{% endif %}>{{ sport.name }} ({{ sport.id }})</option>
+                        {% endfor %}
+                    </select>
+                </form>
             </div>
         </div>
         <div class="games-grid">
         {% if games %}
             {% for game in games %}
-                <a class="game{% if game.is_not_started %} game-not-started{% endif %}" {% if not game.is_not_started %}href="/games/{{ game.game_pk }}/score?date={{ selected_date_iso }}&amp;tz={{ timezone }}"{% endif %} data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}" data-live="{{ 1 if game.is_live else 0 }}" data-not-started="{{ 1 if game.is_not_started else 0 }}" data-game-date="{{ game.game_date_raw }}">
+                <a class="game{% if game.is_not_started %} game-not-started{% endif %}" {% if not game.is_not_started %}href="/games/{{ game.game_pk }}/score?date={{ selected_date_iso }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}"{% endif %} data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}" data-live="{{ 1 if game.is_live else 0 }}" data-not-started="{{ 1 if game.is_not_started else 0 }}" data-game-date="{{ game.game_date_raw }}">
                     <div class="game-teams">
                         <div class="game-team-col{% if game.is_final and game.home_wins %} loser{% endif %}">
                             <span class="game-team-score">{{ game.visitor_score }}</span>
@@ -134,7 +144,7 @@
                         </div>
                     </div>
                     <div class="game-center">
-                        {% if not game.is_final and not game.is_not_started %}
+                        {% if not game.is_final and not game.is_not_started and not game.suppress_diamond %}
                         <div class="game-bases" aria-label="Bases">
                             <div class="game-base second {% if game.second_base %}on{% endif %}"></div>
                             <div class="game-base third {% if game.third_base %}on{% endif %}"></div>
@@ -148,6 +158,9 @@
                         {% endif %}
                         <div class="game-inning">
                             {% if game.is_final %}
+                                {% if game.is_warmup %}
+                                    <div class="game-status-warmup">Warm-up</div>
+                                {% endif %}
                             {% elif game.is_not_started %}
                                 <div class="game-inning-upcoming">
                                     <div class="game-inning-label game-inning-label-upcoming{% if game.starts_within_next_hour %} game-inning-label-soon{% endif %}">{{ game.start_time_local }}</div>
@@ -156,14 +169,18 @@
                                     {% endif %}
                                 </div>
                             {% else %}
-                                {% if game.inning_arrow == 'down' %}
-                                    <div class="game-triangle down"></div>
-                                {% elif game.inning_arrow == 'none' %}
-                                    <div class="game-inning-label">{{ game.inning_display }}</div>
+                                {% if game.is_warmup %}
+                                    <div class="game-status-warmup">Warm-up</div>
                                 {% else %}
-                                    <div class="game-triangle up"></div>
+                                    {% if game.inning_arrow == 'down' %}
+                                        <div class="game-triangle down"></div>
+                                    {% elif game.inning_arrow == 'none' %}
+                                        <div class="game-inning-label">{{ game.inning_display }}</div>
+                                    {% else %}
+                                        <div class="game-triangle up"></div>
+                                    {% endif %}
+                                    <div class="game-inning-num">{{ game.inning_number }}</div>
                                 {% endif %}
-                                <div class="game-inning-num">{{ game.inning_number }}</div>
                             {% endif %}
                         </div>
                     </div>

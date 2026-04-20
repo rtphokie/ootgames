@@ -41,6 +41,29 @@ h1 {
     align-items: center;
     gap: 10px;
 }
+.sport-filter-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+.sport-filter-label {
+    font-size: 11px;
+    color: var(--muted);
+}
+.sport-filter-select {
+    height: 24px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 0 6px;
+}
+.sport-filter-select:focus {
+    outline: 1px solid var(--accent);
+    border-color: var(--accent);
+}
 .sub-summary {
     white-space: nowrap;
 }
