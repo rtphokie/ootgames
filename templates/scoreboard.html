@@ -79,7 +79,7 @@
                 <td colspan="2" class="right"><span class="value">{{ last_pitch_meta }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %} {% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}{% if is_active and away_win_probability %}<span class="team-winprob-wrap"><span class="team-winprob">{{ away_win_probability }}</span>{% if away_win_probability_trend.points %}<svg class="team-winprob-sparkline {{ away_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true"><polyline points="{{ away_win_probability_trend.points }}"></polyline></svg>{% endif %}</span>{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %}&nbsp;{% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}{% if is_active and away_win_probability %}<span class="team-winprob-wrap"><span class="team-winprob">{{ away_win_probability }}</span>{% if away_win_probability_trend.points %}<svg class="team-winprob-sparkline {{ away_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true"><polyline points="{{ away_win_probability_trend.points }}"></polyline></svg>{% endif %}</span>{% endif %}</td>
                 <td class="runs"></td>
                 <td class="center-cell" rowspan="2">
                     <div class="center-wrap">
@@ -115,7 +115,7 @@
                 <td class="right"><span class="{% if not batter_last_name %}muted{% else %}value{% endif %}">{{ balls }}-{{ strikes }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %} {% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}{% if is_active and home_win_probability %}<span class="team-winprob-wrap"><span class="team-winprob">{{ home_win_probability }}</span>{% if home_win_probability_trend.points %}<svg class="team-winprob-sparkline {{ home_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true"><polyline points="{{ home_win_probability_trend.points }}"></polyline></svg>{% endif %}</span>{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %}&nbsp;{% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}{% if is_active and home_win_probability %}<span class="team-winprob-wrap"><span class="team-winprob">{{ home_win_probability }}</span>{% if home_win_probability_trend.points %}<svg class="team-winprob-sparkline {{ home_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true"><polyline points="{{ home_win_probability_trend.points }}"></polyline></svg>{% endif %}</span>{% endif %}</td>
                 <td class="runs"></td>
                 <td class="right"></td>
             </tr>
