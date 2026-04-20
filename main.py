@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import time
 from zoneinfo import ZoneInfo
 from utils import (
     _team_logo_url,
@@ -24,6 +25,9 @@ from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
+# Simple in-memory cache for relatively static StatsAPI resources.
+_MLB_CACHE: dict[tuple[str, tuple[tuple[str, str], ...]], dict] = {}
+
 # Division IDs to display on /standings, in render order.
 # Verified against /api/v1/standings: AL West=200, AL East=201, NL West=203, NL East=204.
 STANDINGS_DIVISIONS = [
@@ -32,6 +36,63 @@ STANDINGS_DIVISIONS = [
     (201, "AL East"),
     (200, "AL West"),
 ]
+
+
+def _cache_key(url: str, params: dict | None) -> tuple[str, tuple[tuple[str, str], ...]]:
+    if not params:
+        return (url, ())
+    normalized = tuple(sorted((str(k), str(v)) for k, v in params.items()))
+    return (url, normalized)
+
+
+def _fetch_statsapi_json(
+    url: str,
+    *,
+    params: dict | None = None,
+    timeout: int = 10,
+    cache_ttl_seconds: int = 0,
+):
+    key = _cache_key(url, params)
+    cached = _MLB_CACHE.get(key)
+
+    if cache_ttl_seconds > 0 and cached:
+        age_seconds = time.time() - cached["fetched_at"]
+        if age_seconds < cache_ttl_seconds:
+            return cached["payload"], None
+
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            timeout=timeout,
+        )
+    except requests.RequestException as exc:
+        # If refresh fails but we have a previous value, serve stale cache.
+        if cached:
+            return cached["payload"], None
+        return None, (502, {"error": "Failed to reach MLB API", "details": str(exc)})
+
+    if not response.ok:
+        # If API is temporarily unhealthy, fall back to last known cached value.
+        if cached:
+            return cached["payload"], None
+        return (
+            None,
+            (
+                502,
+                {
+                    "error": "MLB API request failed",
+                    "status_code": response.status_code,
+                    "body": response.text,
+                },
+            ),
+        )
+
+    payload = response.json()
+    if cache_ttl_seconds > 0:
+        _MLB_CACHE[key] = {"payload": payload, "fetched_at": time.time()}
+
+    return payload, None
 
 
 # --- Routes ---
@@ -54,33 +115,22 @@ def index():
     previous_date = _shift_iso_date(selected_date, -1)
     next_date = _shift_iso_date(selected_date, 1)
 
-    try:
-        response = requests.get(
-            MLB_SCHEDULE_URL,
-            params={
-                "sportId": 1,
-                "startDate": selected_date,
-                "endDate": selected_date,
-                "hydrate": "team,linescore",  # include team info and live linescore
-            },
-            timeout=10,
-        )
-        print(
-            f"selected_date = {selected_date}, MLB API response status: {response.status_code}"
-        )
-    except requests.RequestException as exc:
-        return jsonify({"error": "Failed to reach MLB API", "details": str(exc)}), 502
+    schedule_payload, schedule_error = _fetch_statsapi_json(
+        MLB_SCHEDULE_URL,
+        params={
+            "sportId": 1,
+            "startDate": selected_date,
+            "endDate": selected_date,
+            "hydrate": "team,linescore",  # include team info and live linescore
+        },
+        timeout=10,
+        cache_ttl_seconds=3600,
+    )
+    if schedule_error:
+        status_code, body = schedule_error
+        return jsonify(body), status_code
 
-    if not response.ok:
-        return jsonify(
-            {
-                "error": "MLB API request failed",
-                "status_code": response.status_code,
-                "body": response.text,
-            }
-        ), 502
-
-    dates = response.json().get("dates", [])
+    dates = schedule_payload.get("dates", [])
     games = []
     for day in dates:
         for game in day.get("games", []):
@@ -216,32 +266,24 @@ def standings():
     )
     season = str(datetime.now(ZoneInfo(timezone)).year)
 
-    try:
-        response = requests.get(
-            MLB_STANDINGS_URL,
-            params={
-                "leagueId": "103,104",
-                "standingsTypes": "regularSeason",
-                "season": season,
-            },
-            timeout=10,
-        )
-    except requests.RequestException as exc:
-        return jsonify({"error": "Failed to reach MLB API", "details": str(exc)}), 502
-
-    if not response.ok:
-        return jsonify(
-            {
-                "error": "MLB API request failed",
-                "status_code": response.status_code,
-                "body": response.text,
-            }
-        ), 502
+    standings_payload, standings_error = _fetch_statsapi_json(
+        MLB_STANDINGS_URL,
+        params={
+            "leagueId": "103,104",
+            "standingsTypes": "regularSeason",
+            "season": season,
+        },
+        timeout=10,
+        cache_ttl_seconds=3600,
+    )
+    if standings_error:
+        status_code, body = standings_error
+        return jsonify(body), status_code
 
     # Index division records by division ID for fast lookup.
     records_by_division = {
         (record.get("division") or {}).get("id"): record
-        for record in response.json().get("records", [])
+        for record in standings_payload.get("records", [])
     }
 
     divisions = []
