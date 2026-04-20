@@ -252,6 +252,10 @@
                     </div>
                     <div class="game-inning">
                         {% if game.is_final %}
+                        {% elif game.is_not_started %}
+                            <div style="height:8px"></div>
+                            <div class="game-inning-label">{{ game.start_time_et }}</div>
+                            <div style="height:10px"></div>
                         {% else %}
                             {% if game.inning_arrow == 'up' %}
                                 <div class="game-triangle up"></div>
@@ -269,7 +273,7 @@
                         {% endif %}
                     </div>
                     <div class="game-right">
-                        {% if not game.is_final %}
+                        {% if not game.is_final and not game.is_not_started %}
                         <div class="game-bases" aria-label="Bases">
                             <div class="game-base second {% if game.second_base %}on{% endif %}"></div>
                             <div class="game-base third {% if game.third_base %}on{% endif %}"></div>

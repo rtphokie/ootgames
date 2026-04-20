@@ -1,12 +1,14 @@
-from datetime import date
+from datetime import date, datetime
 import os
+from zoneinfo import ZoneInfo
 
 import requests
-from flask import Flask, jsonify, render_template, render_template_string, request
+from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 MLB_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
 MLB_GAME_FEED_URL = "https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
+MLB_WIN_PROBABILITY_URL = "https://statsapi.mlb.com/api/v1/game/{game_pk}/winProbability"
 
 
 def _team_logo_url(team_id: int | None) -> str:
@@ -15,325 +17,6 @@ def _team_logo_url(team_id: int | None) -> str:
     return f"https://www.mlbstatic.com/team-logos/team-cap-on-dark/{team_id}.svg"
 
 
-SCOREBOARD_TEMPLATE = """
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MLB Scoreboard</title>
-    <script>
-        function updateRefreshLine(refreshMs) {
-            const bar = document.getElementById("refresh-line-bar");
-            if (!bar) {
-                return;
-            }
-            const start = Date.now();
-            const timer = setInterval(function () {
-                const elapsed = Date.now() - start;
-                const remainingMs = Math.max(0, refreshMs - elapsed);
-                const percent = (remainingMs / refreshMs) * 100;
-                bar.style.width = percent.toFixed(2) + "%";
-                if (remainingMs <= 0) {
-                    clearInterval(timer);
-                }
-            }, 100);
-        }
-
-        window.addEventListener("DOMContentLoaded", function () {
-            let refreshMs = 5000;
-            const gamePk = {{ game_pk | tojson }};
-            const stateToken = {{ state_token | tojson }};
-            const storageKey = "mlb_state_" + String(gamePk);
-
-            try {
-                const previousState = localStorage.getItem(storageKey);
-                if (previousState === stateToken) {
-                    refreshMs = 10000;
-                }
-                localStorage.setItem(storageKey, stateToken);
-            } catch (err) {
-                // If storage is unavailable, keep the default 5 second refresh.
-            }
-
-            updateRefreshLine(refreshMs);
-            setTimeout(function () {
-                window.location.reload();
-            }, refreshMs);
-        });
-    </script>
-    <style>
-        :root {
-            --bg: #000000;
-            --panel: #101010;
-            --line: #3b3b3b;
-            --text: #f5f5f5;
-            --muted: #b8b8b8;
-            --off: #6a6a6a;
-            --on: #ffd400;
-        }
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Menlo", "Consolas", monospace;
-            min-height: 100vh;
-            display: grid;
-            place-items: center;
-            padding: 16px;
-            box-sizing: border-box;
-        }
-        .board {
-            width: min(980px, 96vw);
-            border-collapse: collapse;
-            background: var(--panel);
-            border: none;
-            table-layout: fixed;
-        }
-        .board-wrap {
-            position: relative;
-            display: inline-block;
-        }
-        .board td {
-            border: none;
-            padding: 10px;
-            vertical-align: middle;
-            font-size: 18px;
-            letter-spacing: 0.04em;
-        }
-        .muted {
-            color: var(--muted);
-            font-size: 14px;
-            margin-right: 8px;
-        }
-        .value {
-            font-weight: 700;
-        }
-        .team {
-            font-size: 24px;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .team-logo {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-            opacity: 0.95;
-        }
-        .runs {
-            font-size: 52px;
-            text-align: center;
-            font-weight: 800;
-            width: 80px;
-        }
-        .center-cell {
-            width: 340px;
-        }
-        .center-wrap {
-            display: grid;
-            gap: 10px;
-            justify-items: center;
-        }
-        .inning-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .diamond-stack {
-            display: grid;
-            gap: 10px;
-            justify-items: center;
-            align-items: center;
-        }
-        .inning {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-width: 70px;
-            line-height: 1;
-        }
-        .triangle {
-            width: 0;
-            height: 0;
-            margin-bottom: 4px;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-        }
-        .triangle.up {
-            border-bottom: 12px solid var(--on);
-        }
-        .triangle.down {
-            border-top: 12px solid var(--on);
-        }
-        .inning-num {
-            font-size: 32px;
-            font-weight: 800;
-        }
-        .bases {
-            display: grid;
-            grid-template-columns: 22px 22px 22px;
-            grid-template-rows: 22px 22px;
-            column-gap: 6px;
-            row-gap: 6px;
-            align-items: center;
-            justify-items: center;
-        }
-        .base {
-            width: 18px;
-            height: 18px;
-            background: var(--off);
-            transform: rotate(45deg);
-            border: 1px solid #8a8a8a;
-        }
-        .base.second {
-            grid-column: 2;
-            grid-row: 1;
-        }
-        .base.third {
-            grid-column: 1;
-            grid-row: 2;
-        }
-        .base.first {
-            grid-column: 3;
-            grid-row: 2;
-        }
-        .base.on {
-            background: var(--on);
-            border-color: #c3a500;
-        }
-        .outs {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-        }
-        .out {
-            width: 16px;
-            height: 16px;
-            border-radius: 999px;
-            background: var(--off);
-            border: 1px solid #8a8a8a;
-        }
-        .out.on {
-            background: var(--on);
-            border-color: #c3a500;
-        }
-        .right {
-            text-align: right;
-        }
-        .countdown {
-            position: fixed;
-            top: 10px;
-            right: 12px;
-            width: 96px;
-            height: 4px;
-            background: #0b0b0b;
-            border-radius: 999px;
-            overflow: hidden;
-        }
-        .countdown-bar {
-            width: 100%;
-            height: 100%;
-            background: #171717;
-            border-radius: 999px;
-            transition: width 0.1s linear;
-        }
-        .return-link {
-            position: absolute;
-            right: 10px;
-            bottom: 8px;
-            color: #6a6a6a;
-            text-decoration: none;
-            font-size: 18px;
-            line-height: 1;
-            opacity: 0.75;
-        }
-        .return-link:hover {
-            color: #9a9a9a;
-            opacity: 1;
-        }
-        @media (max-width: 700px) {
-            .board td {
-                padding: 8px;
-                font-size: 14px;
-            }
-            .team {
-                font-size: 18px;
-            }
-            .runs {
-                font-size: 36px;
-                width: 56px;
-            }
-            .center-cell {
-                width: 230px;
-            }
-            .inning-num {
-                font-size: 22px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="countdown" aria-hidden="true">
-        <div id="refresh-line-bar" class="countdown-bar"></div>
-    </div>
-    <div class="board-wrap">
-        <table class="board" aria-label="MLB scoreboard">
-            <tr>
-                <td colspan="2"><span class="value">{{ batter_last_name }}</span></td>
-                <td colspan="2" class="right"><span class="value">{{ last_play_text }}</span></td>
-            </tr>
-            <tr>
-                <td><span class="value">{{ pitcher_last_name }}</span></td>
-                <td><span class="muted">P:</span><span class="value">{{ pitch_count }}</span></td>
-                <td colspan="2" class="right"><span class="value">{{ last_pitch_meta }}</span></td>
-            </tr>
-            <tr>
-                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }} {{ away_runs }}</td>
-                <td class="runs"></td>
-                <td class="center-cell" rowspan="2">
-                    <div class="center-wrap">
-                        <div class="inning-row">
-                            <div class="inning">
-                                {% if inning_arrow == 'up' %}
-                                    <div class="triangle up"></div>
-                                {% else %}
-                                    <div style="height: 12px;"></div>
-                                {% endif %}
-                                <div class="inning-num">{{ inning_number }}</div>
-                                {% if inning_arrow == 'down' %}
-                                    <div class="triangle down" style="margin-top: 4px; margin-bottom: 0;"></div>
-                                {% endif %}
-                            </div>
-                            <div class="diamond-stack">
-                                <div class="bases" aria-label="Bases">
-                                    <div class="base second {% if second_base %}on{% endif %}"></div>
-                                    <div class="base third {% if third_base %}on{% endif %}"></div>
-                                    <div class="base first {% if first_base %}on{% endif %}"></div>
-                                </div>
-                                <div class="outs" aria-label="Outs">
-                                    <div class="out {% if outs >= 1 %}on{% endif %}"></div>
-                                    <div class="out {% if outs >= 2 %}on{% endif %}"></div>
-                                    <div class="out {% if outs >= 3 %}on{% endif %}"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </td>
-                <td class="right"><span class="value">{{ balls }}-{{ strikes }}</span></td>
-            </tr>
-            <tr>
-                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }} {{ home_runs }}</td>
-                <td class="runs"></td>
-                <td class="right"></td>
-            </tr>
-        </table>
-        <a class="return-link" href="/" aria-label="Back to schedule">&#8617;</a>
-    </div>
-</body>
-</html>
-"""
 
 
 def _last_name(name: str | None) -> str:
@@ -350,14 +33,70 @@ def _safe_int(value, default=0):
         return default
 
 
+def _gate_time_start(game_date_raw: str | None, timezone: str = "America/New_York") -> str:
+    if not game_date_raw:
+        return "-"
+    try:
+        game_dt_utc = datetime.fromisoformat(game_date_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return "-"
+    try:
+        game_dt_local = game_dt_utc.astimezone(ZoneInfo(timezone))
+    except Exception:
+        return "-"
+    return game_dt_local.strftime("%I:%M %p %Z").lstrip("0")
+
+
+def _format_probability(value) -> str:
+    if isinstance(value, (int, float)):
+        return f"{int(round(value))}%"
+    return "-"
+
+
+def _current_win_probability(game_pk: int | None) -> tuple[float | None, float | None]:
+    if not game_pk:
+        return None, None
+
+    try:
+        response = requests.get(
+            MLB_WIN_PROBABILITY_URL.format(game_pk=game_pk),
+            timeout=3,
+        )
+    except requests.RequestException:
+        return None, None
+
+    if not response.ok:
+        return None, None
+
+    payload = response.json()
+    if isinstance(payload, list) and payload:
+        latest = payload[-1] or {}
+    elif isinstance(payload, dict):
+        latest = payload
+    else:
+        return None, None
+
+    home_probability = latest.get("homeTeamWinProbability")
+    away_probability = latest.get("awayTeamWinProbability")
+
+    if not isinstance(home_probability, (int, float)) or not isinstance(away_probability, (int, float)):
+        return None, None
+
+    return float(home_probability), float(away_probability)
+
+
 @app.get("/")
 def index():
-    selected_date = request.args.get("date", date.today().isoformat())
+    selected_date = request.args.get("startDate", date.today().isoformat())
+    # &startDate=2019-03-28&endDate=2019-09-29
 
     try:
         response = requests.get(
             MLB_SCHEDULE_URL,
-            params={"sportId": 1, "date": selected_date, "hydrate": "team,linescore"},
+            params={"sportId": 1, 
+                    "startDate": selected_date, 
+                    "endDate": selected_date, 
+                    "hydrate": "team,linescore"},
             timeout=10,
         )
     except requests.RequestException as exc:
@@ -376,13 +115,21 @@ def index():
     games = []
     for day in dates:
         for game in day.get("games", []):
+            status = game.get("status") or {}
+            abstract_state = (status.get("abstractGameState") or "").lower()
+            detailed_state = status.get("detailedState")
+            is_not_started = abstract_state == "preview"
+            start_time_et = _gate_time_start(game.get("gameDate"))
+
             teams = game.get("teams", {})
             home = teams.get("home", {})
             away = teams.get("away", {})
             linescore = game.get("linescore") or {}
             inning_state = linescore.get("inningState")
             current_inning = linescore.get("currentInning")
-            if inning_state and current_inning:
+            if is_not_started:
+                inning_display = start_time_et
+            elif inning_state and current_inning:
                 state_lower = inning_state.lower()
                 if state_lower.startswith("mid"):
                     inning_display = "mid"
@@ -391,7 +138,7 @@ def index():
                 else:
                     inning_display = f"{inning_state} {current_inning}"
             else:
-                inning_display = (game.get("status") or {}).get("detailedState") or "Scheduled"
+                inning_display = detailed_state or "Scheduled"
 
             home_score = home.get("score")
             away_score = away.get("score")
@@ -406,7 +153,7 @@ def index():
             games.append(
                 {
                     "game_pk": game.get("gamePk"),
-                    "status": (game.get("status") or {}).get("detailedState"),
+                    "status": detailed_state,
                     "home_team": (home.get("team") or {}).get("name"),
                     "home_abbr": (home.get("team") or {}).get("abbreviation") or (home.get("team") or {}).get("name"),
                     "home_logo_url": _team_logo_url((home.get("team") or {}).get("id")),
@@ -416,9 +163,11 @@ def index():
                     "visitor_logo_url": _team_logo_url((away.get("team") or {}).get("id")),
                     "visitor_score": away_score if away_score is not None else "-",
                     "inning_display": inning_display,
-                    "inning_number": current_inning or "-",
+                    "inning_number": current_inning or (start_time_et if is_not_started else "-"),
                     "inning_arrow": inning_arrow,
-                    "is_final": (game.get("status") or {}).get("detailedState", "").lower().startswith("final") or (game.get("status") or {}).get("detailedState", "").lower().startswith("game over") or (game.get("status") or {}).get("detailedState", "").lower().startswith("completed"),
+                    "is_final": (detailed_state or "").lower().startswith("final") or (detailed_state or "").lower().startswith("game over") or (detailed_state or "").lower().startswith("completed"),
+                    "is_not_started": is_not_started,
+                    "start_time_et": start_time_et,
                     "home_wins": (home_score is not None and away_score is not None and home_score > away_score),
                     "outs": _safe_int(linescore.get("outs"), 0),
                     "first_base": bool(offense.get("first")),
@@ -536,6 +285,11 @@ def get_game_score(game_id: int):
     away_abbr = away_team.get("abbreviation") or "AWAY"
     balls = _safe_int(linescore.get("balls"), 0)
     strikes = _safe_int(linescore.get("strikes"), 0)
+    is_active = ((game_data.get("status") or {}).get("abstractGameState") or "").lower() == "live"
+    if is_active:
+        home_win_probability, away_win_probability = _current_win_probability(payload.get("gamePk", game_id))
+    else:
+        home_win_probability, away_win_probability = None, None
 
     if request.args.get("format") == "json":
         return jsonify(
@@ -570,8 +324,8 @@ def get_game_score(game_id: int):
         ]
     )
 
-    return render_template_string(
-        SCOREBOARD_TEMPLATE,
+    return render_template(
+        "scoreboard.html",
         game_pk=game_pk,
         state_token=state_token,
         batter_last_name=batter_last_name,
@@ -584,16 +338,19 @@ def get_game_score(game_id: int):
         away_abbr=away_abbr,
         away_logo_url=_team_logo_url(away_team.get("id")),
         away_runs=away_score if away_score is not None else "-",
+        away_win_probability=_format_probability(away_win_probability),
         balls=balls,
         strikes=strikes,
         home_abbr=home_abbr,
         home_logo_url=_team_logo_url(home_team.get("id")),
         home_runs=home_score if home_score is not None else "-",
+        home_win_probability=_format_probability(home_win_probability),
         inning_number=inning_number,
         inning_arrow=inning_arrow,
         first_base=bool(offense.get("first")),
         second_base=bool(offense.get("second")),
         third_base=bool(offense.get("third")),
+        is_active=is_active,
         outs=outs,
     )
 
