@@ -15,6 +15,7 @@ from utils import (
     _format_probability,
     _current_win_probability,
     _win_probability_trend,
+    _win_probability_area_chart,
 )
 
 from config import MLB_SCHEDULE_URL, MLB_STANDINGS_URL, MLB_GAME_FEED_URL
@@ -450,6 +451,7 @@ def get_game_score(game_id: int):
     batter_avg = ""
     batter_obp = ""
     batter_ops = ""
+    batter_order = ""
     batter_id = batter.get("id")
     pitcher_id = pitcher.get("id")
     boxscore_teams = (live_data.get("boxscore") or {}).get("teams") or {}
@@ -462,6 +464,12 @@ def get_game_score(game_id: int):
                 batter_avg = season.get("avg", "")
                 batter_obp = season.get("obp", "")
                 batter_ops = season.get("ops", "")
+                raw_order = players[batter_key].get("battingOrder")
+                if raw_order is not None:
+                    try:
+                        batter_order = str(int(raw_order) // 100)
+                    except (TypeError, ValueError):
+                        batter_order = ""
         if pitcher_id is not None:
             pitcher_key = f"ID{pitcher_id}"
             if pitcher_key in players:
@@ -493,6 +501,24 @@ def get_game_score(game_id: int):
     away_win_probability_trend = _win_probability_trend(
         payload.get("gamePk", game_id), "away"
     )
+    win_probability_chart = _win_probability_area_chart(payload.get("gamePk", game_id))
+
+    # Build top/bottom inning markers to label the chart x-axis timeline.
+    inning_count = max(_safe_int(inning_number, 0), len(linescore.get("innings") or []))
+    inning_count = max(1, min(inning_count, 15))
+    total_halves = inning_count * 2
+    axis_left = 36.0
+    axis_width = 488.0
+    half_step = axis_width / (total_halves + 1)
+    chart_inning_markers = []
+    for idx in range(total_halves):
+        chart_inning_markers.append(
+            {
+                "x": axis_left + ((idx + 1) * half_step),
+                "inning": (idx // 2) + 1,
+                "half": "top" if idx % 2 == 0 else "bottom",
+            }
+        )
 
     if request.args.get("format") == "json":
         return jsonify(
@@ -536,6 +562,7 @@ def get_game_score(game_id: int):
         status=status,
         state_token=state_token,
         batter_last_name=batter_last_name,
+        batter_order=batter_order,
         batter_avg=batter_avg,
         batter_obp=batter_obp,
         batter_ops=batter_ops,
@@ -575,6 +602,8 @@ def get_game_score(game_id: int):
             and away_score is not None
             and home_score > away_score
         ),
+        win_probability_chart=win_probability_chart,
+        chart_inning_markers=chart_inning_markers,
     )
 
 

@@ -70,7 +70,7 @@
     <div class="board-wrap">
         <table class="board" aria-label="MLB scoreboard">
             <tr>
-                <td colspan="2"><span class="value">{{ batter_last_name }}</span>{% if batter_avg or batter_obp or batter_ops %}<span class="batter-stat">{{ batter_avg }}/{{ batter_obp }}/{{ batter_ops }}</span>{% endif %}</td>
+                <td colspan="2">{% if batter_order %}<span class="batter-order"># {{ batter_order }}</span>{% endif %}<span class="value">{{ batter_last_name }}</span>{% if batter_avg or batter_obp or batter_ops %}<span class="batter-stat">{{ batter_avg }}/{{ batter_obp }}/{{ batter_ops }}</span>{% endif %}</td>
                 <td colspan="2" class="right"><span class="last-play">{{ last_play_text }}</span></td>
             </tr>
             <tr>
@@ -79,7 +79,7 @@
                 <td colspan="2" class="right"><span class="value">{{ last_pitch_meta }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %}&nbsp;{% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}{% if is_active and away_win_probability %}<span class="team-winprob-wrap"><span class="team-winprob">{{ away_win_probability }}</span>{% if away_win_probability_trend.points %}<svg class="team-winprob-sparkline {{ away_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true"><polyline points="{{ away_win_probability_trend.points }}"></polyline></svg>{% endif %}</span>{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %}&nbsp;{% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}</td>
                 <td class="runs"></td>
                 <td class="center-cell" rowspan="2">
                     <div class="center-wrap">
@@ -115,9 +115,44 @@
                 <td class="right"><span class="{% if not batter_last_name %}muted{% else %}value{% endif %}">{{ balls }}-{{ strikes }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %}&nbsp;{% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}{% if is_active and home_win_probability %}<span class="team-winprob-wrap"><span class="team-winprob">{{ home_win_probability }}</span>{% if home_win_probability_trend.points %}<svg class="team-winprob-sparkline {{ home_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true"><polyline points="{{ home_win_probability_trend.points }}"></polyline></svg>{% endif %}</span>{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %}&nbsp;{% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}</td>
                 <td class="runs"></td>
                 <td class="right"></td>
+            </tr>
+            <tr>
+                <td colspan="4" class="wp-chart-cell">
+                    {% if win_probability_chart.has_data %}
+                        <div class="wp-chart-wrap" aria-label="Win probability over time">
+                            <svg class="wp-chart" viewBox="0 0 560 150" role="img" aria-label="Win probability delta over time; away favored above center line, home favored below">
+                                <defs>
+                                    <clipPath id="wp-clip-upper">
+                                        <rect x="36" y="10" width="488" height="65"></rect>
+                                    </clipPath>
+                                    <clipPath id="wp-clip-lower">
+                                        <rect x="36" y="75" width="488" height="65"></rect>
+                                    </clipPath>
+                                </defs>
+                                <line class="wp-axis-x" x1="36" y1="75" x2="524" y2="75"></line>
+                                <text class="wp-label" x="4" y="20">{{ away_abbr }}</text>
+                                <text class="wp-label" x="4" y="138">{{ home_abbr }}</text>
+                                {% for marker in chart_inning_markers %}
+                                    {% if marker.half == 'top' %}
+                                        <polygon class="wp-half-marker" points="{{ marker.x - 3 }},70 {{ marker.x + 3 }},70 {{ marker.x }},66"></polygon>
+                                        <text class="wp-half-label" x="{{ marker.x }}" y="64" text-anchor="middle">{{ marker.inning }}</text>
+                                    {% else %}
+                                        <polygon class="wp-half-marker" points="{{ marker.x - 3 }},80 {{ marker.x + 3 }},80 {{ marker.x }},84"></polygon>
+                                        <text class="wp-half-label" x="{{ marker.x }}" y="94" text-anchor="middle">{{ marker.inning }}</text>
+                                    {% endif %}
+                                {% endfor %}
+                                <path class="wp-delta-area-up" clip-path="url(#wp-clip-upper)" d="{{ win_probability_chart.delta_area }}"></path>
+                                <path class="wp-delta-area-down" clip-path="url(#wp-clip-lower)" d="{{ win_probability_chart.delta_area }}"></path>
+                                <polyline class="wp-delta-line" points="{{ win_probability_chart.delta_line }}"></polyline>
+                                <circle class="wp-current-dot {% if win_probability_chart.current_is_away_favored %}away{% else %}home{% endif %}" cx="{{ win_probability_chart.point_x }}" cy="{{ win_probability_chart.point_y }}" r="4.5"></circle>
+                                <text class="wp-current-label" x="{{ win_probability_chart.label_x }}" y="{{ win_probability_chart.label_y }}" text-anchor="end">{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} {{ away_win_probability }}{% else %}{{ home_abbr }} {{ home_win_probability }}{% endif %}</text>
+                            </svg>
+                        </div>
+                    {% endif %}
+                </td>
             </tr>
         </table>
         <a class="return-link" href="/" aria-label="Back to schedule">&larr;</a>

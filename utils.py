@@ -279,3 +279,101 @@ def _win_probability_trend(game_pk: int | None, team: str) -> dict[str, str]:
         direction = "flat"
 
     return {"points": _sparkline_points(values), "direction": direction}
+
+
+def _win_probability_area_chart(game_pk: int | None) -> dict[str, str | bool | float]:
+    """Build SVG path/line data for win-probability delta (away - home)."""
+    if not game_pk:
+        return {
+            "has_data": False,
+            "delta_line": "",
+            "delta_area": "",
+            "point_x": 0.0,
+            "point_y": 0.0,
+            "label_x": 0.0,
+            "label_y": 0.0,
+            "current_is_away_favored": False,
+        }
+
+    cache_entry = _WIN_PROB_CACHE["games"].get(str(game_pk))
+    if not cache_entry:
+        return {
+            "has_data": False,
+            "delta_line": "",
+            "delta_area": "",
+            "point_x": 0.0,
+            "point_y": 0.0,
+            "label_x": 0.0,
+            "label_y": 0.0,
+            "current_is_away_favored": False,
+        }
+
+    history = cache_entry.get("history", [])
+    if len(history) < 2:
+        return {
+            "has_data": False,
+            "delta_line": "",
+            "delta_area": "",
+            "point_x": 0.0,
+            "point_y": 0.0,
+            "label_x": 0.0,
+            "label_y": 0.0,
+            "current_is_away_favored": False,
+        }
+
+    width = 560
+    height = 150
+    padding_x = 36
+    padding_y = 10
+    middle_y = height / 2
+    half_height = (height / 2) - padding_y
+    step_x = (width - (2 * padding_x)) / (len(history) - 1)
+
+    delta_points = []
+    for idx, sample in enumerate(history):
+        # sample layout: (timestamp, home_prob, away_prob)
+        home_prob = float(sample[1]) if len(sample) > 1 else 50.0
+        away_prob = float(sample[2]) if len(sample) > 2 else 50.0
+        home_prob = max(0.0, min(100.0, home_prob))
+        away_prob = max(0.0, min(100.0, away_prob))
+        delta = away_prob - home_prob
+
+        x = padding_x + (idx * step_x)
+        y = middle_y - ((delta / 100.0) * half_height)
+
+        delta_points.append((x, y))
+
+    delta_line = " ".join(f"{x:.2f},{y:.2f}" for x, y in delta_points)
+
+    first_x = delta_points[0][0]
+    last_x = delta_points[-1][0]
+
+    delta_area = (
+        f"M {first_x:.2f},{middle_y:.2f} "
+        + " ".join(f"L {x:.2f},{y:.2f}" for x, y in delta_points)
+        + f" L {last_x:.2f},{middle_y:.2f} Z"
+    )
+
+    current_home = float(history[-1][1]) if len(history[-1]) > 1 else 50.0
+    current_away = float(history[-1][2]) if len(history[-1]) > 2 else 50.0
+    current_delta = current_away - current_home
+    current_is_away_favored = current_delta >= 0
+    last_y = delta_points[-1][1]
+    point_x = last_x
+    point_y = last_y
+    label_x = max(110.0, last_x - 8.0)
+    if current_is_away_favored:
+        label_y = max(12.0, last_y - 6.0)
+    else:
+        label_y = min(height - 6.0, last_y + 14.0)
+
+    return {
+        "has_data": True,
+        "delta_line": delta_line,
+        "delta_area": delta_area,
+        "point_x": point_x,
+        "point_y": point_y,
+        "label_x": label_x,
+        "label_y": label_y,
+        "current_is_away_favored": current_is_away_favored,
+    }
