@@ -11,7 +11,7 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: "Menlo", "Consolas", monospace;
+    font-family: "Space Mono", "Menlo", "Consolas", monospace;
     min-height: 100vh;
     padding: 16px;
     box-sizing: border-box;
@@ -56,6 +56,28 @@ h1 {
 .return-link:hover {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.countdown {
+    position: fixed;
+    top: 12px;
+    right: 14px;
+    width: 150px;
+    height: 8px;
+    background: #050505;
+    border: 1px solid #3d3d3d;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 8px rgba(100, 100, 100, 0.18);
+    overflow: hidden;
+    z-index: 10;
+}
+
+.countdown-bar {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #666666, #808080);
+    border-radius: 999px;
+    transition: width 0.1s linear;
 }
 
 .division-grid {
@@ -115,6 +137,13 @@ h2 {
 }
 
 @media (max-width: 700px) {
+    .countdown {
+        width: 120px;
+        height: 7px;
+        top: 10px;
+        right: 10px;
+    }
+
     .division-grid {
         grid-template-columns: 1fr;
     }

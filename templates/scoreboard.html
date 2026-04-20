@@ -11,6 +11,7 @@
                 return;
             }
             const start = Date.now();
+
             const timer = setInterval(function () {
                 const elapsed = Date.now() - start;
                 const remainingMs = Math.max(0, refreshMs - elapsed);
@@ -33,9 +34,9 @@
                 || gameStatus.startsWith("completed");
 
             if (isFinal) {
-                const countdown = document.querySelector(".countdown");
-                if (countdown) {
-                    countdown.style.display = "none";
+                const refreshWrap = document.querySelector(".refresh-wrap");
+                if (refreshWrap) {
+                    refreshWrap.style.display = "none";
                 }
                 return;
             }
@@ -57,10 +58,13 @@
         });
     </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='scoreboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='refresh_bar.css') }}">
 </head>
 <body>
-    <div class="countdown" aria-hidden="true">
-        <div id="refresh-line-bar" class="countdown-bar"></div>
+    <div class="refresh-wrap" aria-hidden="true">
+        <div class="refresh-bar" aria-hidden="true">
+            <div id="refresh-line-bar" class="refresh-bar-fill"></div>
+        </div>
     </div>
     <div class="board-wrap">
         <table class="board" aria-label="MLB scoreboard">

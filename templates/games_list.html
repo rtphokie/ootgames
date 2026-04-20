@@ -31,6 +31,7 @@
             const bar = document.getElementById("schedule-refresh-bar");
             if (!bar) return;
             const start = Date.now();
+
             const timer = setInterval(function () {
                 const elapsed = Date.now() - start;
                 const remaining = Math.max(0, refreshMs - elapsed);
@@ -61,10 +62,13 @@
         });
     </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='games_list.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='refresh_bar.css') }}">
 </head>
 <body>
-    <div class="countdown" aria-hidden="true">
-        <div id="schedule-refresh-bar" class="countdown-bar"></div>
+    <div class="refresh-wrap" aria-hidden="true">
+        <div class="refresh-bar" aria-hidden="true">
+            <div id="schedule-refresh-bar" class="refresh-bar-fill"></div>
+        </div>
     </div>
     <div class="wrap">
         <div class="sub sub-nav">
