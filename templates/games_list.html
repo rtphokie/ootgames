@@ -5,6 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MLB Games</title>
     <script>
+        (function () {
+            const url = new URL(window.location.href);
+            const hasTimezone = url.searchParams.has("tz") || url.searchParams.has("timezone");
+            if (hasTimezone) return;
+
+            const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (!browserTimezone) return;
+
+            const browserToday = new Intl.DateTimeFormat("en-CA", {
+                timeZone: browserTimezone,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit"
+            }).format(new Date());
+
+            url.searchParams.set("tz", browserTimezone);
+            if (!url.searchParams.has("date")) {
+                url.searchParams.set("date", browserToday);
+            }
+            window.location.replace(url.toString());
+        }());
+
         function updateRefreshLine(refreshMs) {
             const bar = document.getElementById("schedule-refresh-bar");
             if (!bar) return;
@@ -45,7 +67,11 @@
         <div id="schedule-refresh-bar" class="countdown-bar"></div>
     </div>
     <div class="wrap">
-        <div class="sub">{{ selected_date }} &mdash; {{ games|length }} games</div>
+        <div class="sub sub-nav">
+            <a class="date-nav-link" href="/?date={{ previous_date }}&amp;tz={{ timezone }}" aria-label="Previous day">&larr;</a>
+            <div class="sub-summary">{{ selected_date }}</div>
+            <a class="date-nav-link" href="/?date={{ next_date }}&amp;tz={{ timezone }}" aria-label="Next day">&rarr;</a>
+        </div>
         <div class="games-grid">
         {% if games %}
             {% for game in games %}

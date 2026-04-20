@@ -30,6 +30,30 @@ h1 {
     font-size: 13px;
     text-align: right;
 }
+.sub-nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.sub-summary {
+    white-space: nowrap;
+}
+.date-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--line);
+    color: var(--text);
+    text-decoration: none;
+    line-height: 1;
+}
+.date-nav-link:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
 .games-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -187,6 +211,9 @@ h1 {
     }
 }
 @media (max-width: 500px) {
+    .sub-nav {
+        justify-content: center;
+    }
     .games-grid {
         grid-template-columns: 1fr;
     }

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime, timedelta
 import os
 from zoneinfo import ZoneInfo
 
@@ -45,6 +45,33 @@ def _gate_time_start(game_date_raw: str | None, timezone: str = "America/New_Yor
     except Exception:
         return ""
     return game_dt_local.strftime("%I:%M %p %Z").lstrip("0")
+
+
+def _normalized_timezone(timezone_raw: str | None, default: str = "America/New_York") -> str:
+    timezone = (timezone_raw or "").strip() or default
+    try:
+        ZoneInfo(timezone)
+    except Exception:
+        return default
+    return timezone
+
+
+def _today_iso_in_timezone(timezone: str) -> str:
+    return datetime.now(ZoneInfo(timezone)).date().isoformat()
+
+
+def _normalized_iso_date(date_raw: str | None, timezone: str) -> str:
+    if not date_raw:
+        return _today_iso_in_timezone(timezone)
+    try:
+        return datetime.strptime(date_raw, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return _today_iso_in_timezone(timezone)
+
+
+def _shift_iso_date(date_raw: str, days: int) -> str:
+    base_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
+    return (base_date + timedelta(days=days)).isoformat()
 
 
 def _display_date(date_raw: str | None) -> str:
@@ -97,7 +124,10 @@ def _current_win_probability(game_pk: int | None) -> tuple[float | None, float |
 
 @app.get("/")
 def index():
-    selected_date = request.args.get("date", date.today().isoformat())
+    timezone = _normalized_timezone(request.args.get("tz") or request.args.get("timezone"))
+    selected_date = _normalized_iso_date(request.args.get("date"), timezone)
+    previous_date = _shift_iso_date(selected_date, -1)
+    next_date = _shift_iso_date(selected_date, 1)
     # &startDate=2019-03-28&endDate=2019-09-29
 
     try:
@@ -130,7 +160,7 @@ def index():
             abstract_state = (status.get("abstractGameState") or "").lower()
             detailed_state = status.get("detailedState")
             is_not_started = abstract_state == "preview"
-            start_time_et = _gate_time_start(game.get("gameDate"))
+            start_time_et = _gate_time_start(game.get("gameDate"), timezone=timezone)
 
             teams = game.get("teams", {})
             home = teams.get("home", {})
@@ -191,6 +221,7 @@ def index():
         return jsonify(
             {
                 "date": selected_date,
+                "timezone": timezone,
                 "count": len(games),
                 "games": games,
                 "routes": [
@@ -204,6 +235,9 @@ def index():
     return render_template(
         "games_list.html",
         selected_date=_display_date(selected_date),
+        previous_date=previous_date,
+        next_date=next_date,
+        timezone=timezone,
         games=games,
     )
 
