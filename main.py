@@ -21,9 +21,9 @@ def _team_logo_url(team_id: int | None) -> str:
 
 def _last_name(name: str | None) -> str:
     if not name:
-        return "-"
+        return ""
     parts = name.strip().split()
-    return parts[-1] if parts else "-"
+    return parts[-1] if parts else ""
 
 
 def _safe_int(value, default=0):
@@ -35,22 +35,32 @@ def _safe_int(value, default=0):
 
 def _gate_time_start(game_date_raw: str | None, timezone: str = "America/New_York") -> str:
     if not game_date_raw:
-        return "-"
+        return ""
     try:
         game_dt_utc = datetime.fromisoformat(game_date_raw.replace("Z", "+00:00"))
     except ValueError:
-        return "-"
+        return ""
     try:
         game_dt_local = game_dt_utc.astimezone(ZoneInfo(timezone))
     except Exception:
-        return "-"
+        return ""
     return game_dt_local.strftime("%I:%M %p %Z").lstrip("0")
+
+
+def _display_date(date_raw: str | None) -> str:
+    if not date_raw:
+        return ""
+    try:
+        parsed_date = datetime.strptime(date_raw, "%Y-%m-%d")
+    except ValueError:
+        return date_raw
+    return parsed_date.strftime("%a, %b %d, %Y")
 
 
 def _format_probability(value) -> str:
     if isinstance(value, (int, float)):
         return f"{int(round(value))}%"
-    return "-"
+    return ""
 
 
 def _current_win_probability(game_pk: int | None) -> tuple[float | None, float | None]:
@@ -87,7 +97,7 @@ def _current_win_probability(game_pk: int | None) -> tuple[float | None, float |
 
 @app.get("/")
 def index():
-    selected_date = request.args.get("startDate", date.today().isoformat())
+    selected_date = request.args.get("date", date.today().isoformat())
     # &startDate=2019-03-28&endDate=2019-09-29
 
     try:
@@ -99,6 +109,7 @@ def index():
                     "hydrate": "team,linescore"},
             timeout=10,
         )
+        print(f"selected_date = {selected_date}, MLB API response status: {response.status_code}")
     except requests.RequestException as exc:
         return jsonify({"error": "Failed to reach MLB API", "details": str(exc)}), 502
 
@@ -157,13 +168,13 @@ def index():
                     "home_team": (home.get("team") or {}).get("name"),
                     "home_abbr": (home.get("team") or {}).get("abbreviation") or (home.get("team") or {}).get("name"),
                     "home_logo_url": _team_logo_url((home.get("team") or {}).get("id")),
-                    "home_score": home_score if home_score is not None else "-",
+                    "home_score": home_score if home_score is not None else "",
                     "visitor_team": (away.get("team") or {}).get("name"),
                     "visitor_abbr": (away.get("team") or {}).get("abbreviation") or (away.get("team") or {}).get("name"),
                     "visitor_logo_url": _team_logo_url((away.get("team") or {}).get("id")),
-                    "visitor_score": away_score if away_score is not None else "-",
+                    "visitor_score": away_score if away_score is not None else "",
                     "inning_display": inning_display,
-                    "inning_number": current_inning or (start_time_et if is_not_started else "-"),
+                    "inning_number": current_inning or (start_time_et if is_not_started else ""),
                     "inning_arrow": inning_arrow,
                     "is_final": (detailed_state or "").lower().startswith("final") or (detailed_state or "").lower().startswith("game over") or (detailed_state or "").lower().startswith("completed"),
                     "is_not_started": is_not_started,
@@ -192,7 +203,7 @@ def index():
 
     return render_template(
         "games_list.html",
-        selected_date=selected_date,
+        selected_date=_display_date(selected_date),
         games=games,
     )
 
@@ -239,7 +250,7 @@ def get_game_score(game_id: int):
     linescore = live_data.get("linescore") or {}
     offense = linescore.get("offense") or {}
     outs = _safe_int(linescore.get("outs"), 0)
-    inning_number = linescore.get("currentInning") or "-"
+    inning_number = linescore.get("currentInning") or ""
     inning_half = (linescore.get("inningHalf") or "").lower()
     inning_arrow = "up" if inning_half == "top" else "down" if inning_half == "bottom" else "none"
 
@@ -253,7 +264,7 @@ def get_game_score(game_id: int):
 
     play_events = current_play.get("playEvents") or []
     last_event = play_events[-1] if play_events else {}
-    last_pitch = ((last_event.get("details") or {}).get("description")) or "-"
+    last_pitch = ((last_event.get("details") or {}).get("description")) or ""
     pitch_details = last_event.get("details") or {}
     pitch_type = ((pitch_details.get("type") or {}).get("description")) or pitch_details.get("type") or ""
     speed = ((last_event.get("pitchData") or {}).get("startSpeed"))
@@ -265,10 +276,10 @@ def get_game_score(game_id: int):
     elif last_pitch_speed:
         last_pitch_meta = last_pitch_speed
     else:
-        last_pitch_meta = "-"
+        last_pitch_meta = ""
     last_play_text = ((current_play.get("result") or {}).get("description")) or last_pitch
 
-    pitch_count = "-"
+    pitch_count = ""
     pitcher_id = pitcher.get("id")
     if pitcher_id is not None:
         boxscore_teams = ((live_data.get("boxscore") or {}).get("teams") or {})
@@ -337,13 +348,13 @@ def get_game_score(game_id: int):
         last_pitch_meta=last_pitch_meta,
         away_abbr=away_abbr,
         away_logo_url=_team_logo_url(away_team.get("id")),
-        away_runs=away_score if away_score is not None else "-",
+        away_runs=away_score if away_score is not None else "",
         away_win_probability=_format_probability(away_win_probability),
         balls=balls,
         strikes=strikes,
         home_abbr=home_abbr,
         home_logo_url=_team_logo_url(home_team.get("id")),
-        home_runs=home_score if home_score is not None else "-",
+        home_runs=home_score if home_score is not None else "",
         home_win_probability=_format_probability(home_win_probability),
         inning_number=inning_number,
         inning_arrow=inning_arrow,

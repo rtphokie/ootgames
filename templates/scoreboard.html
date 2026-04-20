@@ -58,11 +58,11 @@
             </tr>
             <tr>
                 <td><span class="value">{{ pitcher_last_name }}</span></td>
-                <td><span class="muted">P:</span><span class="value">{{ pitch_count }}</span></td>
+                <td>{% if pitch_count %}<span class="muted">P:</span><span class="value">{{ pitch_count }}</span>{% endif %}</td>
                 <td colspan="2" class="right"><span class="value">{{ last_pitch_meta }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }} {{ away_runs }}{% if is_active %}<span class="team-winprob">{{ away_win_probability }}</span>{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %} {{ away_runs }}{% endif %}{% if is_active and away_win_probability %}<span class="team-winprob">{{ away_win_probability }}</span>{% endif %}</td>
                 <td class="runs"></td>
                 <td class="center-cell" rowspan="2">
                     <div class="center-wrap">
@@ -96,7 +96,7 @@
                 <td class="right"><span class="value">{{ balls }}-{{ strikes }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }} {{ home_runs }}{% if is_active %}<span class="team-winprob">{{ home_win_probability }}</span>{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %} {{ home_runs }}{% endif %}{% if is_active and home_win_probability %}<span class="team-winprob">{{ home_win_probability }}</span>{% endif %}</td>
                 <td class="runs"></td>
                 <td class="right"></td>
             </tr>
