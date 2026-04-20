@@ -280,7 +280,7 @@ def index():
         )
 
     return render_template(
-        "games_list.html",
+        "index.html",
         selected_date=_display_date(selected_date),
         previous_date=previous_date,
         next_date=next_date,
@@ -531,7 +531,7 @@ def get_game_score(game_id: int):
     )
 
     return render_template(
-        "scoreboard.html",
+        "game.html",
         game_pk=game_pk,
         status=status,
         state_token=state_token,
