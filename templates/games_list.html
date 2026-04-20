@@ -51,42 +51,15 @@
             {% for game in games %}
                 <a class="game" href="/games/{{ game.game_pk }}/score" data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}">
                     <div class="game-teams">
-                        <div class="game-team-row{% if game.is_final and game.home_wins %} loser{% endif %}">
-                            <img class="logo" src="{{ game.visitor_logo_url }}" alt="{{ game.visitor_abbr }}" onerror="this.style.display='none'">
-                            <span class="game-team-name">{{ game.visitor_abbr }}</span>
+                        <div class="game-team-col{% if game.is_final and game.home_wins %} loser{% endif %}">
                             <span class="game-team-score">{{ game.visitor_score }}</span>
+                            <div class="game-team-icon-row">
+                                <img class="logo" src="{{ game.visitor_logo_url }}" alt="{{ game.visitor_abbr }}" onerror="this.style.display='none'">
+                                <span class="game-team-name">{{ game.visitor_abbr }}</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="game-inning">
-                        {% if game.is_final %}
-                        {% elif game.is_not_started %}
-                            <div style="height:8px"></div>
-                            <div class="game-inning-label">{{ game.start_time_et }}</div>
-                            <div style="height:10px"></div>
-                        {% else %}
-                            {% if game.inning_arrow == 'up' %}
-                                <div class="game-triangle up"></div>
-                            {% else %}
-                                <div style="height:8px"></div>
-                            {% endif %}
-                            <div class="game-inning-num">{{ game.inning_number }}</div>
-                            {% if game.inning_arrow == 'down' %}
-                                <div class="game-triangle down"></div>
-                            {% elif game.inning_arrow == 'none' %}
-                                <div class="game-inning-label">{{ game.inning_display }}</div>
-                            {% else %}
-                                <div style="height:10px"></div>
-                            {% endif %}
-                        {% endif %}
-                    </div>
-                    <div class="game-teams">
-                        <div class="game-team-row{% if game.is_final and not game.home_wins %} loser{% endif %}">
-                            <img class="logo" src="{{ game.home_logo_url }}" alt="{{ game.home_abbr }}" onerror="this.style.display='none'">
-                            <span class="game-team-name">{{ game.home_abbr }}</span>
-                            <span class="game-team-score">{{ game.home_score }}</span>
-                        </div>
-                    </div>
-                    <div class="game-right">
+                    <div class="game-center">
                         {% if not game.is_final and not game.is_not_started %}
                         <div class="game-bases" aria-label="Bases">
                             <div class="game-base second {% if game.second_base %}on{% endif %}"></div>
@@ -99,6 +72,30 @@
                             <div class="game-out {% if game.outs >= 3 %}on{% endif %}"></div>
                         </div>
                         {% endif %}
+                        <div class="game-inning">
+                            {% if game.is_final %}
+                            {% elif game.is_not_started %}
+                                <div class="game-inning-label">{{ game.start_time_et }}</div>
+                            {% else %}
+                                {% if game.inning_arrow == 'down' %}
+                                    <div class="game-triangle down"></div>
+                                {% elif game.inning_arrow == 'none' %}
+                                    <div class="game-inning-label">{{ game.inning_display }}</div>
+                                {% else %}
+                                    <div class="game-triangle up"></div>
+                                {% endif %}
+                                <div class="game-inning-num">{{ game.inning_number }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="game-teams">
+                        <div class="game-team-col{% if game.is_final and not game.home_wins %} loser{% endif %}">
+                            <span class="game-team-score">{{ game.home_score }}</span>
+                            <div class="game-team-icon-row">
+                                <img class="logo" src="{{ game.home_logo_url }}" alt="{{ game.home_abbr }}" onerror="this.style.display='none'">
+                                <span class="game-team-name">{{ game.home_abbr }}</span>
+                            </div>
+                        </div>
                     </div>
                 </a>
             {% endfor %}

@@ -37,7 +37,7 @@ h1 {
 }
 .game {
     display: grid;
-    grid-template-columns: 1fr 44px 44px;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     border: none;
     background: var(--panel);
@@ -50,30 +50,34 @@ h1 {
 }
 .game-teams {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-}
-.game-team-row {
-    display: grid;
-    grid-template-columns: 16px 3ch auto 1fr;
     align-items: center;
-    column-gap: 4px;
+    justify-content: center;
+}
+.game-team-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
     font-size: 13px;
     font-weight: 700;
 }
+.game-team-icon-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
 .game-team-name {
-    text-align: right;
+    text-align: center;
 }
 .game-team-score {
-    font-size: 15px;
+    font-size: 25px;
     font-weight: 800;
-    margin-left: 15px;
 }
-.game-team-row.loser {
+.game-team-col.loser {
     font-weight: 400;
     color: var(--muted);
 }
-.game-team-row.loser .game-team-score {
+.game-team-col.loser .game-team-score {
     font-weight: 400;
 }
 .logo {
@@ -83,12 +87,20 @@ h1 {
     opacity: 0.95;
     flex-shrink: 0;
 }
-.game-inning {
+.game-center {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1px;
+    gap: 4px;
+    padding: 0 8px;
+}
+.game-inning {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
 }
 .game-triangle {
     width: 0;
@@ -106,12 +118,6 @@ h1 {
 .game-inning-label {
     font-size: 10px;
     color: var(--muted);
-}
-.game-right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
 }
 .game-bases {
     display: grid;
