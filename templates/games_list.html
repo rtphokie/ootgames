@@ -78,7 +78,7 @@
         <div class="games-grid">
         {% if games %}
             {% for game in games %}
-                <a class="game" href="/games/{{ game.game_pk }}/score" data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}">
+                <a class="game{% if game.is_not_started %} game-not-started{% endif %}" {% if not game.is_not_started %}href="/games/{{ game.game_pk }}/score"{% endif %} data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}">
                     <div class="game-teams">
                         <div class="game-team-col{% if game.is_final and game.home_wins %} loser{% endif %}">
                             <span class="game-team-score">{{ game.visitor_score }}</span>

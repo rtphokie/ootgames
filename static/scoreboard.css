@@ -183,7 +183,7 @@ body {
 .return-link {
     position: absolute;
     right: 10px;
-    bottom: 8px;
+    top: 8px;
     color: #6a6a6a;
     text-decoration: none;
     font-size: 18px;

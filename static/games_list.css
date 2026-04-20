@@ -77,6 +77,12 @@ h1 {
 .game:hover {
     background: #1a1800;
 }
+.game.game-not-started {
+    cursor: default;
+}
+.game.game-not-started:hover {
+    background: var(--panel);
+}
 .game-teams {
     display: flex;
     align-items: center;
