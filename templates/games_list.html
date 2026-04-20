@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MLB Games</title>
+    <script>
+        function updateRefreshLine(refreshMs) {
+            const bar = document.getElementById("schedule-refresh-bar");
+            if (!bar) return;
+            const start = Date.now();
+            const timer = setInterval(function () {
+                const elapsed = Date.now() - start;
+                const remaining = Math.max(0, refreshMs - elapsed);
+                bar.style.width = ((remaining / refreshMs) * 100).toFixed(2) + "%";
+                if (remaining <= 0) clearInterval(timer);
+            }, 100);
+        }
+        window.addEventListener("DOMContentLoaded", function () {
+            const ms = 15000;
+            updateRefreshLine(ms);
+            setTimeout(function () { window.location.reload(); }, ms);
+
+            document.querySelectorAll(".game[data-pk]").forEach(function (el) {
+                const pk = el.dataset.pk;
+                const vs = el.dataset.vs;
+                const hs = el.dataset.hs;
+                const key = "mlb_score_" + pk;
+                const prev = localStorage.getItem(key);
+                if (prev !== null && prev !== vs + "|" + hs) {
+                    const [pv, ph] = prev.split("|").map(Number);
+                    const cv = Number(vs), ch = Number(hs);
+                    if (cv > pv || ch > ph) {
+                        el.classList.add("run-scored");
+                    }
+                }
+                localStorage.setItem(key, vs + "|" + hs);
+            });
+        });
+    </script>
+    <style>
+        :root {
+            --bg: #000000;
+            --panel: #101010;
+            --line: #3b3b3b;
+            --text: #f5f5f5;
+            --muted: #b8b8b8;
+            --accent: #ffd400;
+        }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Menlo", "Consolas", monospace;
+            min-height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .wrap {
+            width: min(1200px, 98vw);
+            margin: 0 auto;
+        }
+        h1 {
+            margin: 0 0 6px 0;
+            font-size: 22px;
+            letter-spacing: 0.04em;
+        }
+        .sub {
+            color: var(--muted);
+            margin-bottom: 12px;
+            font-size: 13px;
+            text-align: right;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .game {
+            display: grid;
+            grid-template-columns: 1fr 44px 44px;
+            align-items: center;
+            border: none;
+            background: var(--panel);
+            padding: 8px 10px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        .game:hover {
+            background: #1a1800;
+        }
+        .game-teams {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .game-team-row {
+            display: grid;
+            grid-template-columns: 16px 3ch auto 1fr;
+            align-items: center;
+            column-gap: 4px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .game-team-name {
+            text-align: right;
+        }
+        .game-team-score {
+            font-size: 15px;
+            font-weight: 800;
+            margin-left: 15px;
+        }
+        .game-team-row.loser {
+            font-weight: 400;
+            color: var(--muted);
+        }
+        .game-team-row.loser .game-team-score {
+            font-weight: 400;
+        }
+        .logo {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+            opacity: 0.95;
+            flex-shrink: 0;
+        }
+        .game-inning {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+        }
+        .game-triangle {
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+        }
+        .game-triangle.up   { border-bottom: 8px solid var(--accent); }
+        .game-triangle.down { border-top: 8px solid var(--accent); }
+        .game-inning-num {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .game-inning-label {
+            font-size: 10px;
+            color: var(--muted);
+        }
+        .game-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .game-bases {
+            display: grid;
+            grid-template-columns: 12px 12px 12px;
+            grid-template-rows: 12px 12px;
+            column-gap: 3px;
+            row-gap: 3px;
+            align-items: center;
+            justify-items: center;
+        }
+        .game-base {
+            width: 8px;
+            height: 8px;
+            background: #3a3a3a;
+            transform: rotate(45deg);
+            border: 1px solid #5a5a5a;
+        }
+        .game-base.second { grid-column: 2; grid-row: 1; }
+        .game-base.third  { grid-column: 1; grid-row: 2; }
+        .game-base.first  { grid-column: 3; grid-row: 2; }
+        .game-base.on { background: var(--accent); border-color: #c3a500; }
+        .game-outs { display: flex; gap: 4px; }
+        .game-out {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: #3a3a3a;
+            border: 1px solid #5a5a5a;
+        }
+        .game-out.on { background: var(--accent); border-color: #c3a500; }
+        .countdown {
+            position: fixed;
+            top: 10px;
+            right: 12px;
+            width: 96px;
+            height: 4px;
+            background: #0b0b0b;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .countdown-bar {
+            width: 100%;
+            height: 100%;
+            background: #171717;
+            border-radius: 999px;
+            transition: width 0.1s linear;
+        }
+        @keyframes run-flash {
+            0%   { background: #3a2e00; }
+            40%  { background: #1f1800; }
+            70%  { background: #3a2e00; }
+            100% { background: var(--panel); }
+        }
+        .run-scored {
+            animation: run-flash 1.4s ease-out forwards;
+        }
+        .empty {
+            border: 1px dashed var(--line);
+            padding: 20px;
+            color: var(--muted);
+            text-align: center;
+            grid-column: 1 / -1;
+        }
+        @media (min-width: 900px) {
+            .games-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 500px) {
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="countdown" aria-hidden="true">
+        <div id="schedule-refresh-bar" class="countdown-bar"></div>
+    </div>
+    <div class="wrap">
+        <div class="sub">{{ selected_date }} &mdash; {{ games|length }} games</div>
+        <div class="games-grid">
+        {% if games %}
+            {% for game in games %}
+                <a class="game" href="/games/{{ game.game_pk }}/score" data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}">
+                    <div class="game-teams">
+                        <div class="game-team-row{% if game.is_final and game.home_wins %} loser{% endif %}">
+                            <img class="logo" src="{{ game.visitor_logo_url }}" alt="{{ game.visitor_abbr }}" onerror="this.style.display='none'">
+                            <span class="game-team-name">{{ game.visitor_abbr }}</span>
+                            <span class="game-team-score">{{ game.visitor_score }}</span>
+                        </div>
+                        <div class="game-team-row{% if game.is_final and not game.home_wins %} loser{% endif %}">
+                            <img class="logo" src="{{ game.home_logo_url }}" alt="{{ game.home_abbr }}" onerror="this.style.display='none'">
+                            <span class="game-team-name">{{ game.home_abbr }}</span>
+                            <span class="game-team-score">{{ game.home_score }}</span>
+                        </div>
+                    </div>
+                    <div class="game-inning">
+                        {% if game.is_final %}
+                        {% else %}
+                            {% if game.inning_arrow == 'up' %}
+                                <div class="game-triangle up"></div>
+                            {% else %}
+                                <div style="height:8px"></div>
+                            {% endif %}
+                            <div class="game-inning-num">{{ game.inning_number }}</div>
+                            {% if game.inning_arrow == 'down' %}
+                                <div class="game-triangle down"></div>
+                            {% elif game.inning_arrow == 'none' %}
+                                <div class="game-inning-label">{{ game.inning_display }}</div>
+                            {% else %}
+                                <div style="height:10px"></div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="game-right">
+                        {% if not game.is_final %}
+                        <div class="game-bases" aria-label="Bases">
+                            <div class="game-base second {% if game.second_base %}on{% endif %}"></div>
+                            <div class="game-base third {% if game.third_base %}on{% endif %}"></div>
+                            <div class="game-base first {% if game.first_base %}on{% endif %}"></div>
+                        </div>
+                        <div class="game-outs" aria-label="Outs">
+                            <div class="game-out {% if game.outs >= 1 %}on{% endif %}"></div>
+                            <div class="game-out {% if game.outs >= 2 %}on{% endif %}"></div>
+                            <div class="game-out {% if game.outs >= 3 %}on{% endif %}"></div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+            {% endfor %}
+        {% else %}
+            <div class="empty">No games found for this date.</div>
+        {% endif %}
+        </div>
+    </div>
+</body>
+</html>
