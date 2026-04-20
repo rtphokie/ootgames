@@ -204,6 +204,19 @@ body {
     background: var(--on);
     border-color: #c3a500;
 }
+.base.has-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.base-indicator {
+    transform: rotate(-45deg);
+    font-size: 9px;
+    font-weight: 800;
+    color: #1a1a1a;
+    line-height: 1;
+    user-select: none;
+}
 .outs {
     display: flex;
     gap: 12px;
@@ -250,12 +263,12 @@ body {
     fill: #7e7e7e;
 }
 .wp-inning-marker {
-    stroke: #7e7e7e;
-    stroke-width: 1;
+    stroke: #999999;
+    stroke-width: 2;
 }
 .wp-half-label {
-    fill: #8a8a8a;
-    font-size: 8px;
+    fill: #cccccc;
+    font-size: 14px;
     font-family: "Menlo", "Consolas", monospace;
 }
 .wp-delta-area-up {

@@ -103,9 +103,9 @@
                             <div class="diamond-stack">
                                 {% if not suppress_diamond %}
                                 <div class="bases" aria-label="Bases">
-                                    <div class="base second {% if second_base %}on{% endif %}"></div>
-                                    <div class="base third {% if third_base %}on{% endif %}"></div>
-                                    <div class="base first {% if first_base %}on{% endif %}"></div>
+                                    <div class="base second {% if second_base %}on{% endif %}{% if second_base_indicator %} has-indicator{% endif %}">{% if second_base_indicator %}<span class="base-indicator">{{ second_base_indicator }}</span>{% endif %}</div>
+                                    <div class="base third {% if third_base %}on{% endif %}{% if third_base_indicator %} has-indicator{% endif %}">{% if third_base_indicator %}<span class="base-indicator">{{ third_base_indicator }}</span>{% endif %}</div>
+                                    <div class="base first {% if first_base %}on{% endif %}{% if first_base_indicator %} has-indicator{% endif %}">{% if first_base_indicator %}<span class="base-indicator">{{ first_base_indicator }}</span>{% endif %}</div>
                                 </div>
                                 {% endif %}
                                 {% if show_outs %}
@@ -143,8 +143,10 @@
                                 <text class="wp-label" x="4" y="70">{{ away_abbr }}</text>
                                 <text class="wp-label" x="4" y="90">{{ home_abbr }}</text>
                                 {% for marker in chart_inning_markers %}
-                                    <line class="wp-inning-marker" x1="{{ marker.x }}" y1="71" x2="{{ marker.x }}" y2="79"></line>
-                                    <text class="wp-half-label" x="{{ marker.x }}" y="67" text-anchor="middle">{{ marker.inning }}</text>
+                                    {% if marker.inning > 1 %}
+                                    <line class="wp-inning-marker" x1="{{ marker.x }}" y1="65" x2="{{ marker.x }}" y2="85"></line>
+                                    <text class="wp-half-label" x="{{ marker.x }}" y="58" text-anchor="middle">{{ marker.inning }}</text>
+                                    {% endif %}
                                 {% endfor %}
                                 <path class="wp-delta-area-up" clip-path="url(#wp-clip-upper)" d="{{ win_probability_chart.delta_area }}"></path>
                                 <path class="wp-delta-area-down" clip-path="url(#wp-clip-lower)" d="{{ win_probability_chart.delta_area }}"></path>

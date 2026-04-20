@@ -7,11 +7,92 @@ from zoneinfo import ZoneInfo
 import requests
 from api_logging import log_statsapi_call
 
-from config import MLB_WIN_PROBABILITY_URL
+from config import MLB_WIN_PROBABILITY_URL, MLB_STANDINGS_URL
+
+# ---------------------------------------------------------------------------
+# Generic in-memory HTTP cache for StatsAPI resources.
+# ---------------------------------------------------------------------------
+
+_MLB_CACHE: dict[tuple[str, tuple[tuple[str, str], ...]], dict] = {}
+
+
+def _bust_standings_cache() -> None:
+    """Remove all standings entries from the in-memory cache."""
+    keys_to_delete = [k for k in _MLB_CACHE if k[0] == MLB_STANDINGS_URL]
+    for k in keys_to_delete:
+        del _MLB_CACHE[k]
+
+
+def _cache_key(url: str, params: dict | None) -> tuple[str, tuple[tuple[str, str], ...]]:
+    if not params:
+        return (url, ())
+    normalized = tuple(sorted((str(k), str(v)) for k, v in params.items()))
+    return (url, normalized)
+
+
+def _fetch_statsapi_json(
+    url: str,
+    *,
+    params: dict | None = None,
+    timeout: int = 10,
+    cache_ttl_seconds: int = 0,
+):
+    key = _cache_key(url, params)
+    cached = _MLB_CACHE.get(key)
+
+    if cache_ttl_seconds > 0 and cached:
+        age_seconds = time.time() - cached["fetched_at"]
+        if age_seconds < cache_ttl_seconds:
+            return cached["payload"], None
+
+    try:
+        log_statsapi_call(url, params=params)
+        response = requests.get(url, params=params, timeout=timeout)
+    except requests.RequestException as exc:
+        if cached:
+            return cached["payload"], None
+        return None, (502, {"error": "Failed to reach MLB API", "details": str(exc)})
+
+    if not response.ok:
+        if cached:
+            return cached["payload"], None
+        return (
+            None,
+            (
+                502,
+                {
+                    "error": "MLB API request failed",
+                    "status_code": response.status_code,
+                    "body": response.text,
+                },
+            ),
+        )
+
+    payload = response.json()
+    if cache_ttl_seconds > 0:
+        _MLB_CACHE[key] = {"payload": payload, "fetched_at": time.time()}
+
+    return payload, None
+
+
+# ---------------------------------------------------------------------------
+# Generic string utilities.
+# ---------------------------------------------------------------------------
+
+
+def _ordinal(value: int) -> str:
+    if 10 <= (value % 100) <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+    return f"{value}{suffix}"
+
+
+# ---------------------------------------------------------------------------
+# Win-probability cache.
+# ---------------------------------------------------------------------------
 
 _WIN_PROB_MIN_FETCH_SECONDS = 3
-_WIN_PROB_TREND_WINDOW_SECONDS = 1800
-_WIN_PROB_TREND_MAX_POINTS = 24
 _WIN_PROB_MAX_GAMES_PER_TEAM = 2
 
 _CACHE_FILE = os.path.join(os.path.dirname(__file__), "win_prob_cache.json")
@@ -258,10 +339,6 @@ def _current_win_probability(
 
     history = list((cache_entry or {}).get("history", []))
     history.append((now, home_probability, away_probability))
-
-    cutoff = now - _WIN_PROB_TREND_WINDOW_SECONDS
-    history = [sample for sample in history if sample[0] >= cutoff]
-    history = history[-_WIN_PROB_TREND_MAX_POINTS:]
 
     _WIN_PROB_CACHE["games"][key] = {
         "fetched_at": now,

@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-import time
 from zoneinfo import ZoneInfo
 from utils import (
     _team_logo_url,
@@ -17,6 +16,9 @@ from utils import (
     _current_win_probability,
     _win_probability_trend,
     _win_probability_area_chart,
+    _bust_standings_cache,
+    _fetch_statsapi_json,
+    _ordinal,
 )
 
 from config import MLB_SCHEDULE_URL, MLB_STANDINGS_URL, MLB_GAME_FEED_URL, MLB_SPORTS_URL
@@ -29,26 +31,8 @@ from api_logging import log_statsapi_call
 
 app = Flask(__name__)
 
-# Simple in-memory cache for relatively static StatsAPI resources.
-_MLB_CACHE: dict[tuple[str, tuple[tuple[str, str], ...]], dict] = {}
-
 # Track game_pks known to be final so we can bust standings cache when new games finish.
 _FINAL_GAME_PKS: set[int] = set()
-
-
-def _bust_standings_cache() -> None:
-    """Remove all standings entries from the in-memory cache."""
-    keys_to_delete = [k for k in _MLB_CACHE if k[0] == MLB_STANDINGS_URL]
-    for k in keys_to_delete:
-        del _MLB_CACHE[k]
-
-
-def _ordinal(value: int) -> str:
-    if 10 <= (value % 100) <= 20:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
-    return f"{value}{suffix}"
 
 
 def _is_warmup_status(detailed_state: str | None) -> bool:
@@ -64,6 +48,62 @@ def _is_postponed_status(detailed_state: str | None) -> bool:
 def _is_cancelled_status(detailed_state: str | None) -> bool:
     state = (detailed_state or "").strip().lower()
     return "cancel" in state
+
+
+_WALK_EVENTS = frozenset({"walk", "intent walk"})
+_STEAL_EVENTS = frozenset({"stolen base 2b", "stolen base 3b", "stolen base home"})
+
+
+def _base_indicator(all_plays: list, offense: dict, base: str) -> str:
+    """Return 'W', 'S', or '' for the runner on *base* ('first'/'second'/'third').
+
+    Logic: scan all plays in reverse to find the most recent event that placed
+    this runner at their current base.  If that event was a walk → 'W'.
+    If it was a stolen base → 'S'.  Any other advancement (hit, error, etc.) → ''.
+    """
+    runner = offense.get(base)
+    if not runner:
+        return ""
+    runner_id = runner.get("id")
+    if runner_id is None:
+        return ""
+
+    base_number = {"first": 1, "second": 2, "third": 3}.get(base)
+
+    for play in reversed(all_plays):
+        # Check runner movements within this play first.
+        for runner_event in (play.get("runners") or []):
+            movement = runner_event.get("movement") or {}
+            details = runner_event.get("details") or {}
+            person_id = (runner_event.get("details") or {}).get("runner", {}).get("id") \
+                        or (runner_event.get("credits") and None)
+            # runner id lives under details.runner
+            person_id = ((runner_event.get("details") or {}).get("runner") or {}).get("id")
+            if person_id != runner_id:
+                continue
+            end_base = movement.get("end")
+            end_number = {"1B": 1, "2B": 2, "3B": 3}.get(end_base)
+            if end_number != base_number:
+                continue
+            # This event placed the runner at the target base.
+            event = (details.get("event") or "").lower()
+            if event in _STEAL_EVENTS:
+                return "S"
+            # Any other movement (hit, FC, error, etc.) clears the indicator.
+            return ""
+
+        # Also check if the runner was the batter in this play and reached first via walk.
+        if base_number == 1:
+            matchup = play.get("matchup") or {}
+            batter_id = (matchup.get("batter") or {}).get("id")
+            if batter_id == runner_id:
+                event = ((play.get("result") or {}).get("event") or "").lower()
+                if event in _WALK_EVENTS:
+                    return "W"
+                # Batter reached another way — clear indicator.
+                return ""
+
+    return ""
 
 # Division IDs to display on /standings, in render order.
 # Verified against /api/v1/standings: AL West=200, AL East=201, NL West=203, NL East=204.
@@ -84,65 +124,39 @@ _DIVISION_LABELS = {
 }
 
 
-def _cache_key(url: str, params: dict | None) -> tuple[str, tuple[tuple[str, str], ...]]:
-    if not params:
-        return (url, ())
-    normalized = tuple(sorted((str(k), str(v)) for k, v in params.items()))
-    return (url, normalized)
-
-
-def _fetch_statsapi_json(
-    url: str,
-    *,
-    params: dict | None = None,
-    timeout: int = 10,
-    cache_ttl_seconds: int = 0,
-):
-    key = _cache_key(url, params)
-    cached = _MLB_CACHE.get(key)
-
-    if cache_ttl_seconds > 0 and cached:
-        age_seconds = time.time() - cached["fetched_at"]
-        if age_seconds < cache_ttl_seconds:
-            return cached["payload"], None
-
-    try:
-        log_statsapi_call(url, params=params)
-        response = requests.get(
-            url,
-            params=params,
-            timeout=timeout,
-        )
-    except requests.RequestException as exc:
-        # If refresh fails but we have a previous value, serve stale cache.
-        if cached:
-            return cached["payload"], None
-        return None, (502, {"error": "Failed to reach MLB API", "details": str(exc)})
-
-    if not response.ok:
-        # If API is temporarily unhealthy, fall back to last known cached value.
-        if cached:
-            return cached["payload"], None
-        return (
-            None,
-            (
-                502,
-                {
-                    "error": "MLB API request failed",
-                    "status_code": response.status_code,
-                    "body": response.text,
-                },
-            ),
-        )
-
-    payload = response.json()
-    if cache_ttl_seconds > 0:
-        _MLB_CACHE[key] = {"payload": payload, "fetched_at": time.time()}
-
-    return payload, None
 
 
 # --- Routes ---
+
+_ALLOWED_SPORT_NAME_FRAGMENTS = (
+    "major league baseball",
+    "triple-a",
+    "double-a",
+    "high-a",
+    "single-a",
+    "low-a",
+    "international league",
+    "independent",
+)
+
+# Lower number = shown first in the dropdown (single-A → MLB).
+_SPORT_LEVEL_ORDER = (
+    ("independent", 1),
+    ("low-a", 2),
+    ("single-a", 3),
+    ("high-a", 4),
+    ("double-a", 5),
+    ("triple-a", 6),
+    ("major league baseball", 7),
+)
+
+
+def _sport_level(name: str) -> int:
+    name_lower = name.lower()
+    for frag, level in _SPORT_LEVEL_ORDER:
+        if frag in name_lower:
+            return level
+    return 99
 
 
 @app.get("/otg")
@@ -200,6 +214,9 @@ def otg():
                 continue
             if not sport_name:
                 continue
+            name_lower = sport_name.lower()
+            if not any(frag in name_lower for frag in _ALLOWED_SPORT_NAME_FRAGMENTS):
+                continue
             sport_options.append({"id": sport_option_id, "name": sport_name})
 
     if not sport_options:
@@ -209,7 +226,7 @@ def otg():
     if sport_id not in known_sport_ids:
         sport_options.append({"id": sport_id, "name": f"Sport {sport_id}"})
 
-    sport_options.sort(key=lambda s: str(s["name"]).lower())
+    sport_options.sort(key=lambda s: (_sport_level(str(s["name"])), str(s["name"]).lower()))
 
     standings_payload = None
     standings_error = None
@@ -771,6 +788,9 @@ def get_game_score(game_id: int):
         first_base=bool(offense.get("first")),
         second_base=bool(offense.get("second")),
         third_base=bool(offense.get("third")),
+        first_base_indicator=_base_indicator(all_plays, offense, "first"),
+        second_base_indicator=_base_indicator(all_plays, offense, "second"),
+        third_base_indicator=_base_indicator(all_plays, offense, "third"),
         is_active=is_active,
         outs=outs,
         show_outs=inning_half in ("top", "bottom"),
