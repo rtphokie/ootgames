@@ -1,0 +1,268 @@
+:root {
+    --bg: #000000;
+    --panel: #101010;
+    --line: #2a2a2a;
+    --text: #f5f5f5;
+    --muted: #b8b8b8;
+    --off: #6a6a6a;
+    --on: #ffd400;
+    --hit: #2fc26e;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Menlo", "Consolas", monospace;
+    font-size: 13px;
+    padding: 16px;
+    padding-top: 48px;
+}
+
+.return-link {
+    position: fixed;
+    left: 8px;
+    top: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #3b3b3b;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.65);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0.95;
+    z-index: 5;
+}
+.return-link:hover {
+    border-color: var(--on);
+    color: var(--on);
+}
+
+.sc-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ── Header ── */
+.sc-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.sc-team {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sc-team.home {
+    justify-content: flex-end;
+}
+
+.sc-logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.sc-team-name {
+    font-size: 18px;
+    font-weight: 400;
+}
+
+.sc-score {
+    font-size: 36px;
+    font-weight: 800;
+    min-width: 48px;
+    text-align: center;
+    color: var(--muted);
+}
+.sc-score.winner {
+    color: var(--text);
+}
+
+.sc-meta {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.sc-status {
+    font-size: 13px;
+    color: var(--on);
+    font-weight: 400;
+}
+.sc-date {
+    font-size: 11px;
+    color: var(--off);
+}
+.sc-venue {
+    font-size: 11px;
+    color: var(--off);
+}
+
+/* ── Sections ── */
+.sc-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sc-section-title {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--off);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sc-section-logo {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    opacity: 0.7;
+}
+
+/* ── Tables ── */
+.sc-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.sc-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: max-content;
+}
+
+.sc-table th,
+.sc-table td {
+    padding: 6px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+.sc-table th {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--off);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #333;
+}
+
+.sc-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sc-table tfoot td {
+    border-top: 1px solid #333;
+    font-size: 11px;
+    color: var(--muted);
+    border-bottom: none;
+}
+
+/* Column sizing */
+.sc-name-col {
+    text-align: left !important;
+    min-width: 140px;
+}
+.sc-order-col {
+    width: 28px;
+    min-width: 28px;
+}
+.sc-pos-col {
+    width: 36px;
+    min-width: 36px;
+}
+.sc-avg-col {
+    min-width: 52px;
+}
+.sc-pc-col {
+    min-width: 36px;
+}
+.sc-totals-label {
+    text-align: left !important;
+    color: var(--off);
+    font-size: 11px;
+}
+
+/* Linescore specific */
+.sc-linescore .sc-team-col {
+    text-align: left !important;
+    min-width: 48px;
+    font-size: 14px;
+}
+.sc-linescore .sc-inn-col {
+    min-width: 26px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.sc-linescore .sc-total-col {
+    min-width: 34px;
+    border-left: 1px solid #333;
+}
+.sc-runs {
+    font-size: 15px;
+    font-weight: 700;
+}
+.sc-errors {
+    color: var(--off);
+}
+
+/* Utility */
+.sc-dim {
+    color: var(--off);
+}
+.sc-abbr {
+    color: var(--muted);
+    letter-spacing: 0.04em;
+}
+.sc-hit {
+    color: var(--hit);
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 8px;
+        padding-top: 44px;
+        font-size: 12px;
+    }
+    .sc-team-name {
+        font-size: 14px;
+    }
+    .sc-score {
+        font-size: 26px;
+        min-width: 36px;
+    }
+    .sc-logo {
+        width: 26px;
+        height: 26px;
+    }
+    .sc-table th,
+    .sc-table td {
+        padding: 5px 7px;
+    }
+}

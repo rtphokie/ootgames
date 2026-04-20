@@ -118,7 +118,9 @@
                         <div class="game-inning">
                             {% if game.is_final %}
                             {% elif game.is_not_started %}
-                                <div class="game-inning-label">{{ game.start_time_et }}</div>
+                                <div class="game-inning-upcoming">
+                                    <div class="game-inning-label game-inning-label-upcoming{% if game.starts_within_next_hour %} game-inning-label-soon{% endif %}">{{ game.start_time_local }}</div>
+                                </div>
                             {% else %}
                                 {% if game.inning_arrow == 'down' %}
                                     <div class="game-triangle down"></div>

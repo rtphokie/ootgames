@@ -7,6 +7,7 @@ from utils import (
     _last_name,
     _safe_int,
     _display_date,
+    _is_within_next_hour,
     _gate_time_start,
     _normalized_timezone,
     _normalized_iso_date,
@@ -150,7 +151,10 @@ def index():
             detailed_state = status.get("detailedState")
             is_not_started = abstract_state == "preview"
             is_live = abstract_state == "live"
-            start_time_et = _gate_time_start(game.get("gameDate"), timezone=timezone)
+            start_time_local = _gate_time_start(game.get("gameDate"), timezone=timezone)
+            starts_within_next_hour = _is_within_next_hour(
+                game.get("gameDate"), timezone=timezone
+            )
 
             teams = game.get("teams", {})
             home = teams.get("home", {})
@@ -161,7 +165,7 @@ def index():
 
             # Build a short inning status label (e.g. "mid", "end", or the detailed state).
             if is_not_started:
-                inning_display = start_time_et
+                inning_display = start_time_local
             elif inning_state and current_inning:
                 state_lower = inning_state.lower()
                 if state_lower.startswith("mid"):
@@ -208,17 +212,17 @@ def index():
                     "home_abbr": (home.get("team") or {}).get("abbreviation")
                     or (home.get("team") or {}).get("name"),
                     "home_logo_url": _team_logo_url((home.get("team") or {}).get("id")),
-                    "home_score": home_score if home_score is not None else "",
+                    "home_score": home_score if (not is_not_started and home_score is not None) else "",
                     "visitor_team": (away.get("team") or {}).get("name"),
                     "visitor_abbr": (away.get("team") or {}).get("abbreviation")
                     or (away.get("team") or {}).get("name"),
                     "visitor_logo_url": _team_logo_url(
                         (away.get("team") or {}).get("id")
                     ),
-                    "visitor_score": away_score if away_score is not None else "",
+                    "visitor_score": away_score if (not is_not_started and away_score is not None) else "",
                     "inning_display": inning_display,
                     "inning_number": current_inning
-                    or (start_time_et if is_not_started else ""),
+                    or (start_time_local if is_not_started else ""),
                     "inning_arrow": inning_arrow,
                     "is_final": (
                         (detailed_state or "").lower().startswith("final")
@@ -226,7 +230,10 @@ def index():
                         or (detailed_state or "").lower().startswith("completed")
                     ),
                     "is_not_started": is_not_started,
-                    "start_time_et": start_time_et,
+                    "start_time_local": start_time_local,
+                    "starts_within_next_hour": (
+                        starts_within_next_hour if is_not_started else False
+                    ),
                     "home_wins": (
                         home_score is not None
                         and away_score is not None
@@ -404,6 +411,10 @@ def get_game_score(game_id: int):
     live_data = payload.get("liveData") or {}
     linescore = live_data.get("linescore") or {}
     offense = linescore.get("offense") or {}
+
+    # Hide score until at least one pitch has been thrown.
+    all_plays = (live_data.get("plays") or {}).get("allPlays") or []
+    first_pitch_thrown = bool(all_plays)
     outs = _safe_int(linescore.get("outs"), 0)
     inning_number = linescore.get("currentInning") or ""
     inning_half = (linescore.get("inningHalf") or "").lower()
@@ -574,14 +585,14 @@ def get_game_score(game_id: int):
         last_pitch_meta=last_pitch_meta,
         away_abbr=away_abbr,
         away_logo_url=_team_logo_url(away_team.get("id")),
-        away_runs=away_score if away_score is not None else "",
+        away_runs=away_score if (first_pitch_thrown and away_score is not None) else "",
         away_win_probability=_format_probability(away_win_probability),
         away_win_probability_trend=away_win_probability_trend,
         balls=balls,
         strikes=strikes,
         home_abbr=home_abbr,
         home_logo_url=_team_logo_url(home_team.get("id")),
-        home_runs=home_score if home_score is not None else "",
+        home_runs=home_score if (first_pitch_thrown and home_score is not None) else "",
         home_win_probability=_format_probability(home_win_probability),
         home_win_probability_trend=home_win_probability_trend,
         inning_number=inning_number,

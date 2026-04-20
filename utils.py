@@ -105,6 +105,26 @@ def _gate_time_start(
     return game_dt_local.strftime("%I:%M %p %Z").lstrip("0")
 
 
+def _is_within_next_hour(
+    game_date_raw: str | None, timezone: str = "America/New_York"
+) -> bool:
+    """Return True when first pitch is within the next hour in the selected timezone."""
+    if not game_date_raw:
+        return False
+    try:
+        game_dt_utc = datetime.fromisoformat(game_date_raw.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    try:
+        now_local = datetime.now(ZoneInfo(timezone))
+        game_dt_local = game_dt_utc.astimezone(ZoneInfo(timezone))
+    except Exception:
+        return False
+
+    total_seconds = int((game_dt_local - now_local).total_seconds())
+    return 0 <= total_seconds < 3600
+
+
 def _normalized_timezone(
     timezone_raw: str | None, default: str = "America/New_York"
 ) -> str:

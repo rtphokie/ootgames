@@ -15,11 +15,11 @@ body {
     min-height: 100vh;
     display: grid;
     place-items: center;
-    padding: 16px;
+    padding: 0;
     box-sizing: border-box;
 }
 .board {
-    width: min(980px, 96vw);
+    width: 100%;
     border-collapse: collapse;
     background: var(--panel);
     border: none;
@@ -217,9 +217,6 @@ body {
     width: 100%;
     height: 130px;
     display: block;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0));
-    border: 1px solid #242424;
-    border-radius: 6px;
 }
 .wp-axis-y,
 .wp-axis-x {

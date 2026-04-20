@@ -112,7 +112,7 @@
                         </div>
                     </div>
                 </td>
-                <td class="right"><span class="{% if not batter_last_name %}muted{% else %}value{% endif %}">{{ balls }}-{{ strikes }}</span></td>
+                <td class="right">{% if batter_last_name %}<span class="value">{{ balls }}-{{ strikes }}</span>{% endif %}</td>
             </tr>
             <tr>
                 <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %}&nbsp;{% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}</td>
@@ -133,8 +133,8 @@
                                     </clipPath>
                                 </defs>
                                 <line class="wp-axis-x" x1="36" y1="75" x2="524" y2="75"></line>
-                                <text class="wp-label" x="4" y="20">{{ away_abbr }}</text>
-                                <text class="wp-label" x="4" y="138">{{ home_abbr }}</text>
+                                <text class="wp-label" x="4" y="70">{{ away_abbr }}</text>
+                                <text class="wp-label" x="4" y="90">{{ home_abbr }}</text>
                                 {% for marker in chart_inning_markers %}
                                     {% if marker.half == 'top' %}
                                         <polygon class="wp-half-marker" points="{{ marker.x - 3 }},70 {{ marker.x + 3 }},70 {{ marker.x }},66"></polygon>

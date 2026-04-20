@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scorecard — {{ away_abbr }} @ {{ home_abbr }}</title>
+    <link rel="stylesheet" href="/static/scorecard.css">
+</head>
+<body>
+    <a class="return-link" href="/" aria-label="Back to schedule">&larr;</a>
+
+    <div class="sc-wrap">
+
+        {# ── Header ── #}
+        <header class="sc-header">
+            <div class="sc-team away">
+                <img class="sc-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">
+                <span class="sc-team-name">{{ away_name }}</span>
+                {% if away_runs is not none %}
+                <span class="sc-score {% if is_final and away_runs > home_runs %}winner{% endif %}">{{ away_runs }}</span>
+                {% endif %}
+            </div>
+            <div class="sc-meta">
+                <div class="sc-status">{{ status }}</div>
+                {% if game_date %}<div class="sc-date">{{ game_date }}</div>{% endif %}
+                {% if venue %}<div class="sc-venue">{{ venue }}</div>{% endif %}
+            </div>
+            <div class="sc-team home">
+                {% if home_runs is not none %}
+                <span class="sc-score {% if is_final and home_runs > away_runs %}winner{% endif %}">{{ home_runs }}</span>
+                {% endif %}
+                <span class="sc-team-name">{{ home_name }}</span>
+                <img class="sc-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">
+            </div>
+        </header>
+
+        {# ── Linescore ── #}
+        <div class="sc-section">
+            <div class="sc-table-wrap sc-linescore-wrap">
+                <table class="sc-table sc-linescore">
+                    <thead>
+                        <tr>
+                            <th class="sc-team-col"></th>
+                            {% for inn in inning_data %}
+                            <th class="sc-inn-col">{{ inn.num }}</th>
+                            {% endfor %}
+                            <th class="sc-total-col">R</th>
+                            <th class="sc-total-col">H</th>
+                            <th class="sc-total-col">E</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="sc-team-col sc-abbr">{{ away_abbr }}</td>
+                            {% for inn in inning_data %}
+                            <td class="sc-inn-col">
+                                {%- if inn.away.runs is defined and inn.away.runs is not none -%}
+                                    {{- inn.away.runs -}}
+                                {%- endif -%}
+                            </td>
+                            {% endfor %}
+                            <td class="sc-total-col sc-runs {% if is_final and away_runs is not none and home_runs is not none and away_runs > home_runs %}winner{% endif %}">{{ away_runs if away_runs is not none else '' }}</td>
+                            <td class="sc-total-col">{{ away_hits if away_hits is not none else '' }}</td>
+                            <td class="sc-total-col sc-errors">{{ away_errors if away_errors is not none else '' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="sc-team-col sc-abbr">{{ home_abbr }}</td>
+                            {% for inn in inning_data %}
+                            <td class="sc-inn-col">
+                                {%- if inn.home.runs is defined and inn.home.runs is not none -%}
+                                    {{- inn.home.runs -}}
+                                {%- endif -%}
+                            </td>
+                            {% endfor %}
+                            <td class="sc-total-col sc-runs {% if is_final and home_runs is not none and away_runs is not none and home_runs > away_runs %}winner{% endif %}">{{ home_runs if home_runs is not none else '' }}</td>
+                            <td class="sc-total-col">{{ home_hits if home_hits is not none else '' }}</td>
+                            <td class="sc-total-col sc-errors">{{ home_errors if home_errors is not none else '' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# ── Batting ── #}
+        {% for side_label, side_abbr, batting in [
+            (away_name, away_abbr, away_batting),
+            (home_name, home_abbr, home_batting)
+        ] %}
+        {% if batting %}
+        <div class="sc-section">
+            <div class="sc-section-title">
+                <img class="sc-section-logo"
+                     src="{{ away_logo_url if side_abbr == away_abbr else home_logo_url }}"
+                     alt="{{ side_abbr }} logo"
+                     onerror="this.style.display='none'">
+                {{ side_label }} Batting
+            </div>
+            <div class="sc-table-wrap">
+                <table class="sc-table sc-batting">
+                    <thead>
+                        <tr>
+                            <th class="sc-order-col">#</th>
+                            <th class="sc-name-col">Player</th>
+                            <th class="sc-pos-col">POS</th>
+                            <th>AB</th>
+                            <th>R</th>
+                            <th>H</th>
+                            <th>RBI</th>
+                            <th>BB</th>
+                            <th>SO</th>
+                            <th class="sc-avg-col">AVG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for batter in batting %}
+                        <tr>
+                            <td class="sc-order-col sc-dim">{{ batter.order }}</td>
+                            <td class="sc-name-col">{{ batter.name }}</td>
+                            <td class="sc-pos-col sc-dim">{{ batter.pos }}</td>
+                            <td>{{ batter.ab }}</td>
+                            <td>{{ batter.r }}</td>
+                            <td class="{% if batter.h and batter.h | int > 0 %}sc-hit{% endif %}">{{ batter.h }}</td>
+                            <td>{{ batter.rbi }}</td>
+                            <td>{{ batter.bb }}</td>
+                            <td>{{ batter.so }}</td>
+                            <td class="sc-avg-col sc-dim">{{ batter.avg }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="sc-totals-label">Totals</td>
+                            <td>{{ batting | sum(attribute='ab') }}</td>
+                            <td>{{ batting | sum(attribute='r') }}</td>
+                            <td>{{ batting | sum(attribute='h') }}</td>
+                            <td>{{ batting | sum(attribute='rbi') }}</td>
+                            <td>{{ batting | sum(attribute='bb') }}</td>
+                            <td>{{ batting | sum(attribute='so') }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        {# ── Pitching ── #}
+        {% for side_label, side_abbr, pitching in [
+            (away_name, away_abbr, away_pitching),
+            (home_name, home_abbr, home_pitching)
+        ] %}
+        {% if pitching %}
+        <div class="sc-section">
+            <div class="sc-section-title">
+                <img class="sc-section-logo"
+                     src="{{ away_logo_url if side_abbr == away_abbr else home_logo_url }}"
+                     alt="{{ side_abbr }} logo"
+                     onerror="this.style.display='none'">
+                {{ side_label }} Pitching
+            </div>
+            <div class="sc-table-wrap">
+                <table class="sc-table sc-pitching">
+                    <thead>
+                        <tr>
+                            <th class="sc-name-col">Pitcher</th>
+                            <th>IP</th>
+                            <th>H</th>
+                            <th>R</th>
+                            <th>ER</th>
+                            <th>BB</th>
+                            <th>SO</th>
+                            <th class="sc-pc-col">PC</th>
+                            <th class="sc-avg-col">ERA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pitcher in pitching %}
+                        <tr>
+                            <td class="sc-name-col">{{ pitcher.name }}</td>
+                            <td>{{ pitcher.ip }}</td>
+                            <td>{{ pitcher.h }}</td>
+                            <td>{{ pitcher.r }}</td>
+                            <td>{{ pitcher.er }}</td>
+                            <td>{{ pitcher.bb }}</td>
+                            <td>{{ pitcher.so }}</td>
+                            <td class="sc-pc-col sc-dim">{{ pitcher.pc }}</td>
+                            <td class="sc-avg-col sc-dim">{{ pitcher.era }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+    </div>
+</body>
+</html>
