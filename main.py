@@ -111,8 +111,8 @@ def _fetch_statsapi_json(
 # --- Routes ---
 
 
-@app.get("/")
-def index():
+@app.get("/otg")
+def otg():
     """
     Schedule page — list all MLB games for the selected date.
 
@@ -295,6 +295,11 @@ def index():
         timezone=timezone,
         games=games,
     )
+
+
+@app.get("/")
+def home():
+    return render_template("home.html")
 
 
 @app.get("/standings")
