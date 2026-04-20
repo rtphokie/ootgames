@@ -29,6 +29,16 @@ app = Flask(__name__)
 # Simple in-memory cache for relatively static StatsAPI resources.
 _MLB_CACHE: dict[tuple[str, tuple[tuple[str, str], ...]], dict] = {}
 
+# Track game_pks known to be final so we can bust standings cache when new games finish.
+_FINAL_GAME_PKS: set[int] = set()
+
+
+def _bust_standings_cache() -> None:
+    """Remove all standings entries from the in-memory cache."""
+    keys_to_delete = [k for k in _MLB_CACHE if k[0] == MLB_STANDINGS_URL]
+    for k in keys_to_delete:
+        del _MLB_CACHE[k]
+
 # Division IDs to display on /standings, in render order.
 # Verified against /api/v1/standings: AL West=200, AL East=201, NL West=203, NL East=204.
 STANDINGS_DIVISIONS = [
@@ -125,7 +135,6 @@ def index():
             "hydrate": "team,linescore",  # include team info and live linescore
         },
         timeout=10,
-        cache_ttl_seconds=3600,
     )
     if schedule_error:
         status_code, body = schedule_error
@@ -245,6 +254,13 @@ def index():
         return (2, date)
 
     games.sort(key=_sort_key)
+
+    # Bust standings cache if any games newly went final since last check.
+    current_final_pks = {g["game_pk"] for g in games if g["is_final"] and g["game_pk"]}
+    new_final_pks = current_final_pks - _FINAL_GAME_PKS
+    if new_final_pks:
+        _FINAL_GAME_PKS.update(new_final_pks)
+        _bust_standings_cache()
 
     if request.args.get("format") == "json":
         return jsonify(
@@ -531,6 +547,7 @@ def get_game_score(game_id: int):
         third_base=bool(offense.get("third")),
         is_active=is_active,
         outs=outs,
+        show_outs=inning_half in ("top", "bottom"),
     )
 
 

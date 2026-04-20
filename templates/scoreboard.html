@@ -100,11 +100,13 @@
                                     <div class="base third {% if third_base %}on{% endif %}"></div>
                                     <div class="base first {% if first_base %}on{% endif %}"></div>
                                 </div>
+                                {% if show_outs %}
                                 <div class="outs" aria-label="Outs">
                                     <div class="out {% if outs >= 1 %}on{% endif %}"></div>
                                     <div class="out {% if outs >= 2 %}on{% endif %}"></div>
                                     <div class="out {% if outs >= 3 %}on{% endif %}"></div>
                                 </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
