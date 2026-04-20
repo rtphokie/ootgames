@@ -26,7 +26,19 @@
             let refreshMs = 5000;
             const gamePk = {{ game_pk | tojson }};
             const stateToken = {{ state_token | tojson }};
+            const gameStatus = ({{ status | tojson }} || "").toLowerCase();
             const storageKey = "mlb_state_" + String(gamePk);
+            const isFinal = gameStatus.startsWith("final")
+                || gameStatus.startsWith("game over")
+                || gameStatus.startsWith("completed");
+
+            if (isFinal) {
+                const countdown = document.querySelector(".countdown");
+                if (countdown) {
+                    countdown.style.display = "none";
+                }
+                return;
+            }
 
             try {
                 const previousState = localStorage.getItem(storageKey);
@@ -101,7 +113,7 @@
                 <td class="right"></td>
             </tr>
         </table>
-        <a class="return-link" href="/" aria-label="Back to schedule">&#8617;</a>
+        <a class="return-link" href="/" aria-label="Back to schedule">&larr;</a>
     </div>
 </body>
 </html>

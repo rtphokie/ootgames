@@ -160,8 +160,22 @@ def index():
                     "first_base": bool(offense.get("first")),
                     "second_base": bool(offense.get("second")),
                     "third_base": bool(offense.get("third")),
+                    "game_date_raw": game.get("gameDate") or "",
                 }
             )
+
+    def _sort_key(g):
+        date = g["game_date_raw"]
+        if not g["is_not_started"] and not g["is_final"]:
+            # In progress: sort group 0, reverse start time (negate)
+            return (0, date and "-" + date or "")
+        if g["is_not_started"]:
+            # Not started: sort group 1, ascending start time
+            return (1, date)
+        # Final: sort group 2, ascending start time
+        return (2, date)
+
+    games.sort(key=_sort_key)
 
     if request.args.get("format") == "json":
         return jsonify(
@@ -421,6 +435,7 @@ def get_game_score(game_id: int):
     return render_template(
         "scoreboard.html",
         game_pk=game_pk,
+        status=status,
         state_token=state_token,
         batter_last_name=batter_last_name,
         last_play_text=last_play_text,
