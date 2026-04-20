@@ -33,7 +33,12 @@ h1 {
 .sub-nav {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+}
+.date-nav-group {
+    display: flex;
+    align-items: center;
     gap: 10px;
 }
 .sub-summary {
