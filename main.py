@@ -41,6 +41,19 @@ def _bust_standings_cache() -> None:
     for k in keys_to_delete:
         del _MLB_CACHE[k]
 
+
+def _ordinal(value: int) -> str:
+    if 10 <= (value % 100) <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+    return f"{value}{suffix}"
+
+
+def _is_warmup_status(detailed_state: str | None) -> bool:
+    state = (detailed_state or "").strip().lower()
+    return "warm" in state
+
 # Division IDs to display on /standings, in render order.
 # Verified against /api/v1/standings: AL West=200, AL East=201, NL West=203, NL East=204.
 STANDINGS_DIVISIONS = [
@@ -49,6 +62,15 @@ STANDINGS_DIVISIONS = [
     (201, "AL East"),
     (200, "AL West"),
 ]
+
+_DIVISION_LABELS = {
+    200: "AL West",
+    201: "AL East",
+    202: "AL Central",
+    203: "NL West",
+    204: "NL East",
+    205: "NL Central",
+}
 
 
 def _cache_key(url: str, params: dict | None) -> tuple[str, tuple[tuple[str, str], ...]]:
@@ -124,9 +146,11 @@ def otg():
     timezone = _normalized_timezone(
         request.args.get("tz") or request.args.get("timezone")
     )
+    today_date = _normalized_iso_date(None, timezone)
     selected_date = _normalized_iso_date(request.args.get("date"), timezone)
     previous_date = _shift_iso_date(selected_date, -1)
     next_date = _shift_iso_date(selected_date, 1)
+    season = selected_date.split("-")[0]
 
     schedule_payload, schedule_error = _fetch_statsapi_json(
         MLB_SCHEDULE_URL,
@@ -142,6 +166,55 @@ def otg():
         status_code, body = schedule_error
         return jsonify(body), status_code
 
+    standings_payload, standings_error = _fetch_statsapi_json(
+        MLB_STANDINGS_URL,
+        params={
+            "leagueId": "103,104",
+            "standingsTypes": "regularSeason",
+            "season": season,
+        },
+        timeout=10,
+        cache_ttl_seconds=3600,
+    )
+
+    team_standings: dict[int, dict[str, str]] = {}
+    if not standings_error and standings_payload:
+        for division_record in standings_payload.get("records", []):
+            division = division_record.get("division") or {}
+            division_id = division.get("id")
+            division_name = (
+                _DIVISION_LABELS.get(division_id)
+                or division.get("nameShort")
+                or division.get("name")
+                or ""
+            )
+            for team_record in division_record.get("teamRecords") or []:
+                team = team_record.get("team") or {}
+                team_id = team.get("id")
+                if not team_id:
+                    continue
+
+                rank_raw = str(team_record.get("divisionRank") or "").strip()
+                rank_display = ""
+                if rank_raw.isdigit():
+                    rank_display = _ordinal(int(rank_raw))
+                elif rank_raw:
+                    rank_display = rank_raw
+
+                if rank_display and division_name:
+                    division_position = f"{rank_display} {division_name}"
+                elif rank_display:
+                    division_position = rank_display
+                else:
+                    division_position = ""
+
+                team_standings[team_id] = {
+                    "record": _record_string(
+                        team_record.get("wins"), team_record.get("losses")
+                    ),
+                    "division_position": division_position,
+                }
+
     dates = schedule_payload.get("dates", [])
     games = []
     for day in dates:
@@ -151,6 +224,7 @@ def otg():
             detailed_state = status.get("detailedState")
             is_not_started = abstract_state == "preview"
             is_live = abstract_state == "live"
+            is_warmup = _is_warmup_status(detailed_state)
             start_time_local = _gate_time_start(game.get("gameDate"), timezone=timezone)
             starts_within_next_hour = _is_within_next_hour(
                 game.get("gameDate"), timezone=timezone
@@ -162,6 +236,8 @@ def otg():
             linescore = game.get("linescore") or {}
             inning_state = linescore.get("inningState")
             current_inning = linescore.get("currentInning")
+            home_team_id = (home.get("team") or {}).get("id")
+            away_team_id = (away.get("team") or {}).get("id")
 
             # Build a short inning status label (e.g. "mid", "end", or the detailed state).
             if is_not_started:
@@ -189,11 +265,14 @@ def otg():
             if is_live and game_pk:
                 home_win_probability, away_win_probability = _current_win_probability(
                     game_pk,
-                    home_team_id=(home.get("team") or {}).get("id"),
-                    away_team_id=(away.get("team") or {}).get("id"),
+                    home_team_id=home_team_id,
+                    away_team_id=away_team_id,
                 )
                 home_win_probability_trend = _win_probability_trend(game_pk, "home")
                 away_win_probability_trend = _win_probability_trend(game_pk, "away")
+
+            home_team_standing = team_standings.get(home_team_id, {})
+            away_team_standing = team_standings.get(away_team_id, {})
 
             # Determine triangle direction for top/bottom of inning indicator.
             inning_half_raw = (linescore.get("inningState") or "").lower()
@@ -212,12 +291,20 @@ def otg():
                     "home_abbr": (home.get("team") or {}).get("abbreviation")
                     or (home.get("team") or {}).get("name"),
                     "home_logo_url": _team_logo_url((home.get("team") or {}).get("id")),
+                    "home_record": home_team_standing.get("record", ""),
+                    "home_division_position": home_team_standing.get(
+                        "division_position", ""
+                    ),
                     "home_score": home_score if (not is_not_started and home_score is not None) else "",
                     "visitor_team": (away.get("team") or {}).get("name"),
                     "visitor_abbr": (away.get("team") or {}).get("abbreviation")
                     or (away.get("team") or {}).get("name"),
                     "visitor_logo_url": _team_logo_url(
                         (away.get("team") or {}).get("id")
+                    ),
+                    "visitor_record": away_team_standing.get("record", ""),
+                    "visitor_division_position": away_team_standing.get(
+                        "division_position", ""
                     ),
                     "visitor_score": away_score if (not is_not_started and away_score is not None) else "",
                     "inning_display": inning_display,
@@ -230,6 +317,7 @@ def otg():
                         or (detailed_state or "").lower().startswith("completed")
                     ),
                     "is_not_started": is_not_started,
+                    "is_warmup": is_warmup,
                     "start_time_local": start_time_local,
                     "starts_within_next_hour": (
                         starts_within_next_hour if is_not_started else False
@@ -289,6 +377,8 @@ def otg():
 
     return render_template(
         "index.html",
+        selected_date_iso=selected_date,
+        today_date=today_date,
         selected_date=_display_date(selected_date),
         previous_date=previous_date,
         next_date=next_date,
@@ -377,6 +467,11 @@ def get_game_score(game_id: int):
     Query params:
       format=json: return basic score data as JSON instead of HTML.
     """
+    return_timezone = _normalized_timezone(
+        request.args.get("tz") or request.args.get("timezone")
+    )
+    return_date = _normalized_iso_date(request.args.get("date"), return_timezone)
+
     try:
         response = requests.get(
             MLB_GAME_FEED_URL.format(game_pk=game_id),
@@ -402,6 +497,7 @@ def get_game_score(game_id: int):
     # Top-level game metadata and team info.
     game_data = payload.get("gameData", {})
     status = (game_data.get("status") or {}).get("detailedState")
+    is_warmup = _is_warmup_status(status)
     teams = game_data.get("teams", {})
     home_team = teams.get("home", {})
     away_team = teams.get("away", {})
@@ -575,8 +671,11 @@ def get_game_score(game_id: int):
     return render_template(
         "game.html",
         game_pk=game_pk,
+        return_date=return_date,
+        return_timezone=return_timezone,
         status=status,
         state_token=state_token,
+        is_warmup=is_warmup,
         batter_last_name=batter_last_name,
         batter_order=batter_order,
         batter_avg=batter_avg,

@@ -55,6 +55,12 @@ h1 {
     text-decoration: none;
     line-height: 1;
 }
+.date-nav-link-today {
+    width: auto;
+    min-width: 52px;
+    padding: 0 8px;
+    font-size: 11px;
+}
 .date-nav-link:hover {
     border-color: var(--accent);
     color: var(--accent);
@@ -103,6 +109,20 @@ h1 {
 }
 .game-team-name {
     text-align: center;
+}
+.game-team-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    line-height: 1.1;
+    text-align: center;
+}
+.game-team-meta-sep {
+    color: #6c6c6c;
 }
 .game-winprob-wrap {
     position: relative;
@@ -205,6 +225,13 @@ h1 {
 }
 .game-inning-label-soon {
     color: var(--accent);
+}
+.game-status-warmup {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 .game-bases {
     display: grid;

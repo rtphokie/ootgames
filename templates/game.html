@@ -68,6 +68,9 @@
         </div>
     </div>
     <div class="board-wrap">
+        {% if is_warmup %}
+            <div class="game-status-warmup">Warm-up</div>
+        {% endif %}
         <table class="board" aria-label="MLB scoreboard">
             <tr>
                 <td colspan="2">{% if batter_order %}<span class="batter-order"># {{ batter_order }}</span>{% endif %}<span class="value">{{ batter_last_name }}</span>{% if batter_avg or batter_obp or batter_ops %}<span class="batter-stat">{{ batter_avg }}/{{ batter_obp }}/{{ batter_ops }}</span>{% endif %}</td>
@@ -155,7 +158,7 @@
                 </td>
             </tr>
         </table>
-        <a class="return-link" href="/otg" aria-label="Back to schedule">&larr;</a>
+        <a class="return-link" href="/otg?date={{ return_date }}&amp;tz={{ return_timezone }}" aria-label="Back to schedule">&larr;</a>
     </div>
 </body>
 </html>

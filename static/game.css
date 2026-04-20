@@ -29,6 +29,15 @@ body {
     position: relative;
     display: inline-block;
 }
+.game-status-warmup {
+    text-align: center;
+    color: var(--on);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
 .board td {
     border: none;
     padding: 10px;
