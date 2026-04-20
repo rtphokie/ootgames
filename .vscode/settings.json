@@ -1,5 +1,9 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "uv": true
+        "uv": true,
+        "/^source \\.venv/bin/activate && python -c \"import main\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

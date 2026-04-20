@@ -104,6 +104,35 @@ h1 {
 .game-team-name {
     text-align: center;
 }
+.game-winprob-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 1px;
+}
+.game-winprob {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+}
+.game-winprob-sparkline {
+    width: 36px;
+    height: 10px;
+    overflow: visible;
+}
+.game-winprob-sparkline polyline {
+    fill: none;
+    stroke: #808080;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.game-winprob-sparkline.up polyline {
+    stroke: #2fc26e;
+}
+.game-winprob-sparkline.down polyline {
+    stroke: #e05b5b;
+}
 .game-team-score {
     font-size: 25px;
     font-weight: 800;

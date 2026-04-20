@@ -14,6 +14,7 @@ from utils import (
     _shift_iso_date,
     _format_probability,
     _current_win_probability,
+    _win_probability_trend,
 )
 
 from config import MLB_SCHEDULE_URL, MLB_STANDINGS_URL, MLB_GAME_FEED_URL
@@ -138,6 +139,7 @@ def index():
             abstract_state = (status.get("abstractGameState") or "").lower()
             detailed_state = status.get("detailedState")
             is_not_started = abstract_state == "preview"
+            is_live = abstract_state == "live"
             start_time_et = _gate_time_start(game.get("gameDate"), timezone=timezone)
 
             teams = game.get("teams", {})
@@ -165,6 +167,18 @@ def index():
             away_score = away.get("score")
             offense = linescore.get("offense") or {}
 
+            home_win_probability = None
+            away_win_probability = None
+            home_win_probability_trend = {"points": "", "direction": "flat"}
+            away_win_probability_trend = {"points": "", "direction": "flat"}
+            game_pk = game.get("gamePk")
+            if is_live and game_pk:
+                home_win_probability, away_win_probability = _current_win_probability(
+                    game_pk
+                )
+                home_win_probability_trend = _win_probability_trend(game_pk, "home")
+                away_win_probability_trend = _win_probability_trend(game_pk, "away")
+
             # Determine triangle direction for top/bottom of inning indicator.
             inning_half_raw = (linescore.get("inningState") or "").lower()
             if inning_half_raw.startswith("top"):
@@ -176,7 +190,7 @@ def index():
 
             games.append(
                 {
-                    "game_pk": game.get("gamePk"),
+                    "game_pk": game_pk,
                     "status": detailed_state,
                     "home_team": (home.get("team") or {}).get("name"),
                     "home_abbr": (home.get("team") or {}).get("abbreviation")
@@ -211,6 +225,11 @@ def index():
                     "second_base": bool(offense.get("second")),
                     "third_base": bool(offense.get("third")),
                     "game_date_raw": game.get("gameDate") or "",
+                    "is_live": is_live,
+                    "home_win_probability": _format_probability(home_win_probability),
+                    "away_win_probability": _format_probability(away_win_probability),
+                    "home_win_probability_trend": home_win_probability_trend,
+                    "away_win_probability_trend": away_win_probability_trend,
                 }
             )
 
@@ -438,6 +457,13 @@ def get_game_score(game_id: int):
     else:
         home_win_probability, away_win_probability = None, None
 
+    home_win_probability_trend = _win_probability_trend(
+        payload.get("gamePk", game_id), "home"
+    )
+    away_win_probability_trend = _win_probability_trend(
+        payload.get("gamePk", game_id), "away"
+    )
+
     if request.args.get("format") == "json":
         return jsonify(
             {
@@ -490,12 +516,14 @@ def get_game_score(game_id: int):
         away_logo_url=_team_logo_url(away_team.get("id")),
         away_runs=away_score if away_score is not None else "",
         away_win_probability=_format_probability(away_win_probability),
+        away_win_probability_trend=away_win_probability_trend,
         balls=balls,
         strikes=strikes,
         home_abbr=home_abbr,
         home_logo_url=_team_logo_url(home_team.get("id")),
         home_runs=home_score if home_score is not None else "",
         home_win_probability=_format_probability(home_win_probability),
+        home_win_probability_trend=home_win_probability_trend,
         inning_number=inning_number,
         inning_arrow=inning_arrow,
         first_base=bool(offense.get("first")),

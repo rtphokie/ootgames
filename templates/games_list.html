@@ -90,6 +90,16 @@
                                 <img class="logo" src="{{ game.visitor_logo_url }}" alt="{{ game.visitor_abbr }}" onerror="this.style.display='none'">
                                 <span class="game-team-name">{{ game.visitor_abbr }}</span>
                             </div>
+                            {% if game.is_live and game.away_win_probability %}
+                                <span class="game-winprob-wrap">
+                                    <span class="game-winprob">{{ game.away_win_probability }}</span>
+                                    {% if game.away_win_probability_trend.points %}
+                                        <svg class="game-winprob-sparkline {{ game.away_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true">
+                                            <polyline points="{{ game.away_win_probability_trend.points }}"></polyline>
+                                        </svg>
+                                    {% endif %}
+                                </span>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="game-center">
@@ -128,6 +138,16 @@
                                 <img class="logo" src="{{ game.home_logo_url }}" alt="{{ game.home_abbr }}" onerror="this.style.display='none'">
                                 <span class="game-team-name">{{ game.home_abbr }}</span>
                             </div>
+                            {% if game.is_live and game.home_win_probability %}
+                                <span class="game-winprob-wrap">
+                                    <span class="game-winprob">{{ game.home_win_probability }}</span>
+                                    {% if game.home_win_probability_trend.points %}
+                                        <svg class="game-winprob-sparkline {{ game.home_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true">
+                                            <polyline points="{{ game.home_win_probability_trend.points }}"></polyline>
+                                        </svg>
+                                    {% endif %}
+                                </span>
+                            {% endif %}
                         </div>
                     </div>
                 </a>
