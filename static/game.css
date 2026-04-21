@@ -59,6 +59,9 @@ body {
     display: inline-flex;
     gap: 6px;
 }
+.meta-attendance {
+    color: var(--off);
+}
 .meta-label {
     color: var(--off);
 }

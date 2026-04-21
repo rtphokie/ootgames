@@ -581,6 +581,7 @@ def get_game_score(game_id: int):
     game_info = game_data.get("gameInfo") or {}
     venue = game_data.get("venue") or {}
     venue_location = venue.get("location") or {}
+    venue_field_info = venue.get("fieldInfo") or {}
     weather = game_data.get("weather") or {}
     status = (game_data.get("status") or {}).get("detailedState")
     is_warmup = _is_warmup_status(status)
@@ -688,7 +689,7 @@ def get_game_score(game_id: int):
     venue_parts = [part for part in (venue_city, venue_state) if part]
     if venue_name and venue_parts:
         venue_name = f"{venue_name}, {', '.join(venue_parts)}"
-    capacity_raw = game_info.get("capacity")
+    capacity_raw = venue_field_info.get("capacity") or game_info.get("capacity")
     capacity = ""
     if capacity_raw not in (None, ""):
         try:
@@ -697,9 +698,18 @@ def get_game_score(game_id: int):
             capacity = str(capacity_raw)
     attendance_raw = game_info.get("attendance")
     attendance = ""
+    attendance_pct = ""
     if attendance_raw not in (None, ""):
         try:
-            attendance = f"{int(str(attendance_raw).replace(',', '')):,}"
+            attendance_int = int(str(attendance_raw).replace(',', ''))
+            attendance = f"{attendance_int:,}"
+            if capacity_raw not in (None, ""):
+                try:
+                    cap_int = int(str(capacity_raw).replace(',', ''))
+                    if cap_int > 0:
+                        attendance_pct = f"{attendance_int / cap_int:.0%}"
+                except (TypeError, ValueError):
+                    pass
         except (TypeError, ValueError):
             attendance = str(attendance_raw)
     weather_condition = weather.get("condition") or ""
@@ -856,6 +866,7 @@ def get_game_score(game_id: int):
         win_probability_chart=win_probability_chart,
         chart_inning_markers=chart_inning_markers,
         attendance=attendance,
+        attendance_pct=attendance_pct,
         weather_condition=weather_condition,
         weather_temp=weather_temp,
         weather_wind=weather_wind,
