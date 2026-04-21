@@ -690,6 +690,8 @@ def get_game_score(game_id: int):
 
     home_abbr = home_team.get("abbreviation") or "HOME"
     away_abbr = away_team.get("abbreviation") or "AWAY"
+    home_name = home_team.get("teamName") or home_abbr
+    away_name = away_team.get("teamName") or away_abbr
     balls = _safe_int(linescore.get("balls"), 0)
     strikes = _safe_int(linescore.get("strikes"), 0)
     venue_name = venue.get("name") or ""
@@ -848,6 +850,7 @@ def get_game_score(game_id: int):
         last_pitch_speed=last_pitch_speed,
         last_pitch_meta=last_pitch_meta,
         away_abbr=away_abbr,
+        away_name=away_name,
         away_logo_url=_team_logo_url(away_team.get("id")),
         away_runs=away_score if (first_pitch_thrown and away_score is not None) else "",
         away_win_probability=_format_probability(away_win_probability),
@@ -855,6 +858,7 @@ def get_game_score(game_id: int):
         balls=balls,
         strikes=strikes,
         home_abbr=home_abbr,
+        home_name=home_name,
         home_logo_url=_team_logo_url(home_team.get("id")),
         home_runs=home_score if (first_pitch_thrown and home_score is not None) else "",
         home_win_probability=_format_probability(home_win_probability),

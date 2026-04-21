@@ -127,6 +127,7 @@
                                 <span class="game-winprob-wrap">
                                     {% if game.away_win_probability_trend.points %}
                                         <svg class="game-winprob-sparkline {{ game.away_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true">
+                                            <title>Away win probability trend</title>
                                             <polyline points="{{ game.away_win_probability_trend.points }}"></polyline>
                                         </svg>
                                     {% endif %}
@@ -193,6 +194,7 @@
                                 <span class="game-winprob-wrap">
                                     {% if game.home_win_probability_trend.points %}
                                         <svg class="game-winprob-sparkline {{ game.home_win_probability_trend.direction }}" viewBox="0 0 64 18" aria-hidden="true">
+                                            <title>Home win probability trend</title>
                                             <polyline points="{{ game.home_win_probability_trend.points }}"></polyline>
                                         </svg>
                                     {% endif %}
