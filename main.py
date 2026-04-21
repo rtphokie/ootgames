@@ -167,6 +167,7 @@ def _sport_level(name: str) -> int:
 
 
 @app.get("/otg")
+@app.get("/gameview")
 def otg():
     """
     Schedule page — list all MLB games for the selected date.
@@ -438,6 +439,20 @@ def otg():
         _FINAL_GAME_PKS.update(new_final_pks)
         _bust_standings_cache()
 
+    is_gameview = request.path == "/gameview"
+    selected_game_pk = None
+    if is_gameview and games:
+        valid_game_pks = [g["game_pk"] for g in games if g.get("game_pk")]
+        requested_game_pk = _safe_int(request.args.get("gamePk"), 0)
+        if requested_game_pk in valid_game_pks:
+            selected_game_pk = requested_game_pk
+        else:
+            live_game = next((g for g in games if g.get("is_live") and g.get("game_pk")), None)
+            if live_game:
+                selected_game_pk = live_game["game_pk"]
+            else:
+                selected_game_pk = valid_game_pks[0] if valid_game_pks else None
+
     if request.args.get("format") == "json":
         return jsonify(
             {
@@ -466,6 +481,8 @@ def otg():
         sport_id=sport_id,
         sport_options=sport_options,
         games=games,
+        gameview_mode=is_gameview,
+        selected_game_pk=selected_game_pk,
     )
 
 

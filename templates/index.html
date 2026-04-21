@@ -82,6 +82,28 @@
                 }
                 localStorage.setItem(key, vs + "|" + hs);
             });
+
+            const detailFrame = document.getElementById("gameview-detail-frame");
+            if (detailFrame) {
+                document.querySelectorAll(".game[data-pk]").forEach(function (card) {
+                    card.addEventListener("click", function (event) {
+                        event.preventDefault();
+                        const nextSrc = card.dataset.detailUrl;
+                        if (!nextSrc) return;
+
+                        detailFrame.src = nextSrc;
+
+                        document.querySelectorAll(".game.selected").forEach(function (selectedCard) {
+                            selectedCard.classList.remove("selected");
+                        });
+                        card.classList.add("selected");
+
+                        const nextUrl = new URL(window.location.href);
+                        nextUrl.searchParams.set("gamePk", card.dataset.pk || "");
+                        window.history.replaceState({}, "", nextUrl.toString());
+                    });
+                });
+            }
         });
     </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
@@ -112,10 +134,21 @@
                 </form>
             </div>
         </div>
+        {% if gameview_mode and selected_game_pk %}
+            <div class="gameview-detail-wrap">
+                <iframe
+                    id="gameview-detail-frame"
+                    class="gameview-detail-frame"
+                    src="/games/{{ selected_game_pk }}/score?date={{ selected_date_iso }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}"
+                    title="Selected game detail"
+                    loading="eager"
+                ></iframe>
+            </div>
+        {% endif %}
         <div class="games-grid">
         {% if games %}
             {% for game in games %}
-                <a class="game{% if game.is_not_started %} game-not-started{% endif %}" {% if not game.is_not_started %}href="/games/{{ game.game_pk }}/score?date={{ selected_date_iso }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}"{% endif %} data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}" data-live="{{ 1 if game.is_live else 0 }}" data-not-started="{{ 1 if game.is_not_started else 0 }}" data-game-date="{{ game.game_date_raw }}">
+                <a class="game{% if game.is_not_started %} game-not-started{% endif %}{% if gameview_mode and selected_game_pk == game.game_pk %} selected{% endif %}" {% if gameview_mode %}href="/gameview?date={{ selected_date_iso }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}&amp;gamePk={{ game.game_pk }}"{% elif not game.is_not_started %}href="/games/{{ game.game_pk }}/score?date={{ selected_date_iso }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}"{% endif %} data-detail-url="/games/{{ game.game_pk }}/score?date={{ selected_date_iso }}&amp;tz={{ timezone }}&amp;sportId={{ sport_id }}" data-pk="{{ game.game_pk }}" data-vs="{{ game.visitor_score }}" data-hs="{{ game.home_score }}" data-live="{{ 1 if game.is_live else 0 }}" data-not-started="{{ 1 if game.is_not_started else 0 }}" data-game-date="{{ game.game_date_raw }}">
                     <div class="game-teams">
                         <div class="game-team-col{% if game.is_final and game.home_wins %} loser{% endif %}">
                             <span class="game-team-score">{{ game.visitor_score }}</span>

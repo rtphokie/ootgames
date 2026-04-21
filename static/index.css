@@ -93,6 +93,18 @@ h1 {
     grid-template-columns: 1fr;
     gap: 8px;
 }
+.gameview-detail-wrap {
+    width: 100%;
+    margin-bottom: 12px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+}
+.gameview-detail-frame {
+    width: 100%;
+    height: 540px;
+    border: 0;
+    display: block;
+}
 .game {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -105,6 +117,10 @@ h1 {
 }
 .game:hover {
     background: #1a1800;
+}
+.game.selected {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(255, 212, 0, 0.35);
 }
 .game.game-not-started {
     cursor: default;
@@ -325,5 +341,8 @@ h1 {
     }
     .games-grid {
         grid-template-columns: 1fr;
+    }
+    .gameview-detail-frame {
+        height: 440px;
     }
 }
