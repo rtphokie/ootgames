@@ -621,6 +621,8 @@ def get_game_score(game_id: int):
 
     batter_last_name = _last_name(batter.get("lastName") or batter.get("fullName"))
     pitcher_last_name = _last_name(pitcher.get("lastName") or pitcher.get("fullName"))
+    batter_side = (matchup.get("batSide") or {}).get("code") or ""
+    pitcher_hand = (matchup.get("pitchHand") or {}).get("code") or ""
 
     # Most recent pitch description and speed.
     play_events = current_play.get("playEvents") or []
@@ -818,12 +820,14 @@ def get_game_score(game_id: int):
         is_cancelled=is_cancelled,
         suppress_diamond=suppress_diamond,
         batter_last_name=batter_last_name,
+        batter_side=batter_side,
         batter_order=batter_order,
         batter_avg=batter_avg,
         batter_obp=batter_obp,
         batter_ops=batter_ops,
         last_play_text=last_play_text,
         pitcher_last_name=pitcher_last_name,
+        pitcher_hand=pitcher_hand,
         pitch_count=pitch_count,
         last_pitch=last_pitch,
         last_pitch_speed=last_pitch_speed,

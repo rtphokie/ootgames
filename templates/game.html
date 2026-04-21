@@ -75,29 +75,29 @@
         {% endif %}
         <table class="board" aria-label="MLB scoreboard">
             <tr>
-                <td colspan="2">{% if batter_order %}<span class="batter-order"># {{ batter_order }}</span>{% endif %}<span class="value">{{ batter_last_name }}</span>{% if batter_avg or batter_obp or batter_ops %}<span class="batter-stat">{{ batter_avg }}/{{ batter_obp }}/{{ batter_ops }}</span>{% endif %}</td>
+                <td colspan="2">{% if batter_order %}<span class="batter-order" data-tooltip="Batting order"># {{ batter_order }}</span>{% endif %}<span class="value">{{ batter_last_name }}</span>{% if batter_side %}<span class="handedness" data-tooltip="Batting side">({{ batter_side }})</span>{% endif %}{% if batter_avg or batter_obp or batter_ops %}<span class="batter-stat">{% if batter_avg %}<span data-tooltip="Batting average">{{ batter_avg }}</span>/{% endif %}<span data-tooltip="On-base percentage">{{ batter_obp }}</span>/<span data-tooltip="On-base plus slugging">{{ batter_ops }}</span></span>{% endif %}</td>
                 <td colspan="2" class="right"><span class="last-play">{{ last_play_text }}</span></td>
             </tr>
             <tr>
-                <td><span class="value">{{ pitcher_last_name }}</span></td>
-                <td>{% if pitch_count %}<span class="muted">P:</span><span class="muted">{{ pitch_count }}</span>{% endif %}</td>
+                <td><span class="value">{{ pitcher_last_name }}</span>{% if pitcher_hand %}<span class="handedness" data-tooltip="Pitching hand">({{ pitcher_hand }})</span>{% endif %}</td>
+                <td>{% if pitch_count %}<span class="muted" data-tooltip="Pitch count">P:&nbsp;{{ pitch_count }}</span>{% endif %}</td>
                 <td colspan="2" class="right"><span class="last-play">{{ last_pitch_meta }}</span></td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %}&nbsp;{% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ away_logo_url }}" alt="{{ away_abbr }} logo" onerror="this.style.display='none'">{{ away_abbr }}{% if away_runs != "" %}&nbsp;{% if is_final and not home_wins %}<span class="winner">{{ away_runs }}</span>{% else %}{{ away_runs }}{% endif %}{% endif %}{% if away_reviews_remaining is not none %}<span class="team-challenges"><span data-tooltip="Review challenges remaining">{{ away_reviews_remaining }}</span>/<span data-tooltip="ABS challenges remaining">{{ away_abs_remaining }}</span>/<span data-tooltip="Mound visits remaining">{{ away_mound_remaining }}</span></span>{% endif %}</td>
                 <td class="runs"></td>
                 <td class="center-cell" rowspan="2">
                     <div class="center-wrap">
                         <div class="inning-row">
                             <div class="inning">
                                 {% if inning_arrow == 'up' %}
-                                    <div class="triangle up"></div>
+                                    <div class="triangle up" data-tooltip="Top of inning"></div>
                                 {% else %}
                                     <div style="height: 12px;"></div>
                                 {% endif %}
-                                <div class="inning-num">{{ inning_number }}</div>
+                                <div class="inning-num" data-tooltip="Inning">{{ inning_number }}</div>
                                 {% if inning_arrow == 'down' %}
-                                    <div class="triangle down" style="margin-top: 4px; margin-bottom: 0;"></div>
+                                    <div class="triangle down" style="margin-top: 4px; margin-bottom: 0;" data-tooltip="Bottom of inning"></div>
                                 {% endif %}
                             </div>
                             <div class="diamond-stack">
@@ -110,26 +110,26 @@
                                 {% endif %}
                                 {% if show_outs %}
                                 <div class="outs" aria-label="Outs">
-                                    <div class="out {% if outs >= 1 %}on{% endif %}"></div>
-                                    <div class="out {% if outs >= 2 %}on{% endif %}"></div>
-                                    <div class="out {% if outs >= 3 %}on{% endif %}"></div>
+                                    <div class="out {% if outs >= 1 %}on{% endif %}" data-tooltip="Out 1"></div>
+                                    <div class="out {% if outs >= 2 %}on{% endif %}" data-tooltip="Out 2"></div>
+                                    <div class="out {% if outs >= 3 %}on{% endif %}" data-tooltip="Out 3"></div>
                                 </div>
                                 {% endif %}
                             </div>
                         </div>
                     </div>
                 </td>
-                <td class="right">{% if batter_last_name %}<span class="value">{{ balls }}-{{ strikes }}</span>{% endif %}</td>
+                <td class="right">{% if batter_last_name %}<span class="value"><span data-tooltip="Balls">{{ balls }}</span>-<span data-tooltip="Strikes">{{ strikes }}</span></span>{% endif %}</td>
             </tr>
             <tr>
-                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %}&nbsp;{% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}</td>
+                <td class="team"><img class="team-logo" src="{{ home_logo_url }}" alt="{{ home_abbr }} logo" onerror="this.style.display='none'">{{ home_abbr }}{% if home_runs != "" %}&nbsp;{% if is_final and home_wins %}<span class="winner">{{ home_runs }}</span>{% else %}{{ home_runs }}{% endif %}{% endif %}{% if home_reviews_remaining is not none %}<span class="team-challenges"><span data-tooltip="Review challenges remaining">{{ home_reviews_remaining }}</span>/<span data-tooltip="ABS challenges remaining">{{ home_abs_remaining }}</span>/<span data-tooltip="Mound visits remaining">{{ home_mound_remaining }}</span></span>{% endif %}</td>
                 <td class="runs"></td>
                 <td class="right"></td>
             </tr>
             <tr>
                 <td colspan="4" class="wp-chart-cell">
                     {% if win_probability_chart.has_data %}
-                        <div class="wp-chart-wrap" aria-label="Win probability over time">
+                        <div class="wp-chart-wrap" aria-label="Win probability over time" data-tooltip="Win probability chart — {{ away_abbr }} vs {{ home_abbr }}">
                             <svg class="wp-chart" viewBox="0 0 560 150" role="img" aria-label="Win probability delta over time; away favored above center line, home favored below">
                                 <defs>
                                     <clipPath id="wp-clip-upper">
@@ -151,8 +151,8 @@
                                 <path class="wp-delta-area-up" clip-path="url(#wp-clip-upper)" d="{{ win_probability_chart.delta_area }}"></path>
                                 <path class="wp-delta-area-down" clip-path="url(#wp-clip-lower)" d="{{ win_probability_chart.delta_area }}"></path>
                                 <polyline class="wp-delta-line" points="{{ win_probability_chart.delta_line }}"></polyline>
-                                <circle class="wp-current-dot {% if win_probability_chart.current_is_away_favored %}away{% else %}home{% endif %}" cx="{{ win_probability_chart.point_x }}" cy="{{ win_probability_chart.point_y }}" r="4.5"></circle>
-                                <text class="wp-current-label" x="{{ win_probability_chart.label_x }}" y="{{ win_probability_chart.label_y }}" text-anchor="end">{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} {{ away_win_probability }}{% else %}{{ home_abbr }} {{ home_win_probability }}{% endif %}</text>
+                                <circle class="wp-current-dot {% if win_probability_chart.current_is_away_favored %}away{% else %}home{% endif %}" cx="{{ win_probability_chart.point_x }}" cy="{{ win_probability_chart.point_y }}" r="4.5"><title>{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} win probability: {{ away_win_probability }}{% else %}{{ home_abbr }} win probability: {{ home_win_probability }}{% endif %}</title></circle>
+                                <text class="wp-current-label" x="{{ win_probability_chart.label_x }}" y="{{ win_probability_chart.label_y }}" text-anchor="end">{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} {{ away_win_probability }}{% else %}{{ home_abbr }} {{ home_win_probability }}{% endif %}<title>{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} win probability: {{ away_win_probability }}{% else %}{{ home_abbr }} win probability: {{ home_win_probability }}{% endif %}</title></text>
                             </svg>
                         </div>
                     {% endif %}
