@@ -24,8 +24,7 @@
         }
 
         window.addEventListener("DOMContentLoaded", function () {
-            const runnerOnThird = {{ third_base | tojson }};
-            let refreshMs = runnerOnThird ? 3000 : 5000;
+            let refreshMs = 5000;
             const gamePk = {{ game_pk | tojson }};
             const stateToken = {{ state_token | tojson }};
             const gameStatus = ({{ status | tojson }} || "").toLowerCase();
@@ -44,7 +43,7 @@
 
             try {
                 const previousState = localStorage.getItem(storageKey);
-                if (previousState === stateToken && !runnerOnThird) {
+                if (previousState === stateToken) {
                     refreshMs = 10000;
                 }
                 localStorage.setItem(storageKey, stateToken);
@@ -103,9 +102,9 @@
                             <div class="diamond-stack">
                                 {% if not suppress_diamond %}
                                 <div class="bases" aria-label="Bases">
-                                    <div class="base second {% if second_base %}on{% endif %}{% if second_base_indicator %} has-indicator{% endif %}">{% if second_base_indicator %}<span class="base-indicator">{{ second_base_indicator }}</span>{% endif %}</div>
-                                    <div class="base third {% if third_base %}on{% endif %}{% if third_base_indicator %} has-indicator{% endif %}">{% if third_base_indicator %}<span class="base-indicator">{{ third_base_indicator }}</span>{% endif %}</div>
-                                    <div class="base first {% if first_base %}on{% endif %}{% if first_base_indicator %} has-indicator{% endif %}">{% if first_base_indicator %}<span class="base-indicator">{{ first_base_indicator }}</span>{% endif %}</div>
+                                    <div class="base second {% if second_base %}on{% endif %}{% if second_base_indicator %} has-indicator{% endif %}">{% if second_base_indicator %}<span class="base-indicator"{% if second_base_tooltip %} data-tooltip="{{ second_base_tooltip }}"{% endif %}>{{ second_base_indicator }}</span>{% endif %}</div>
+                                    <div class="base third {% if third_base %}on{% endif %}{% if third_base_indicator %} has-indicator{% endif %}">{% if third_base_indicator %}<span class="base-indicator"{% if third_base_tooltip %} data-tooltip="{{ third_base_tooltip }}"{% endif %}>{{ third_base_indicator }}</span>{% endif %}</div>
+                                    <div class="base first {% if first_base %}on{% endif %}{% if first_base_indicator %} has-indicator{% endif %}">{% if first_base_indicator %}<span class="base-indicator"{% if first_base_tooltip %} data-tooltip="{{ first_base_tooltip }}"{% endif %}>{{ first_base_indicator }}</span>{% endif %}</div>
                                 </div>
                                 {% endif %}
                                 {% if show_outs %}
@@ -130,27 +129,27 @@
                 <td colspan="4" class="wp-chart-cell">
                     {% if win_probability_chart.has_data %}
                         <div class="wp-chart-wrap" aria-label="Win probability over time" data-tooltip="Win probability chart — {{ away_abbr }} vs {{ home_abbr }}">
-                            <svg class="wp-chart" viewBox="0 0 560 150" role="img" aria-label="Win probability delta over time; away favored above center line, home favored below">
+                            <svg class="wp-chart" viewBox="0 0 560 190" role="img" aria-label="Win probability delta over time; away favored above center line, home favored below">
                                 <defs>
                                     <clipPath id="wp-clip-upper">
-                                        <rect x="36" y="10" width="488" height="65"></rect>
+                                        <rect x="36" y="14" width="488" height="81"></rect>
                                     </clipPath>
                                     <clipPath id="wp-clip-lower">
-                                        <rect x="36" y="75" width="488" height="65"></rect>
+                                        <rect x="36" y="95" width="488" height="81"></rect>
                                     </clipPath>
                                 </defs>
-                                <line class="wp-axis-x" x1="36" y1="75" x2="524" y2="75"></line>
-                                <text class="wp-label" x="4" y="70">{{ away_abbr }}</text>
-                                <text class="wp-label" x="4" y="90">{{ home_abbr }}</text>
+                                <line class="wp-axis-x" x1="36" y1="95" x2="524" y2="95"></line>
+                                <text class="wp-label" x="4" y="90">{{ away_abbr }}</text>
+                                <text class="wp-label" x="4" y="110">{{ home_abbr }}</text>
                                 {% for marker in chart_inning_markers %}
                                     {% if marker.inning > 1 %}
-                                    <line class="wp-inning-marker" x1="{{ marker.x }}" y1="65" x2="{{ marker.x }}" y2="85"></line>
-                                    <text class="wp-half-label" x="{{ marker.x }}" y="58" text-anchor="middle">{{ marker.inning }}</text>
+                                    <line class="wp-inning-marker" x1="{{ marker.x }}" y1="85" x2="{{ marker.x }}" y2="105"></line>
+                                    <text class="wp-half-label" x="{{ marker.x }}" y="78" text-anchor="middle">{{ marker.inning }}</text>
                                     {% endif %}
                                 {% endfor %}
-                                <path class="wp-delta-area-up" clip-path="url(#wp-clip-upper)" d="{{ win_probability_chart.delta_area }}"></path>
-                                <path class="wp-delta-area-down" clip-path="url(#wp-clip-lower)" d="{{ win_probability_chart.delta_area }}"></path>
-                                <polyline class="wp-delta-line" points="{{ win_probability_chart.delta_line }}"></polyline>
+                                <path class="wp-delta-area-up" fill="{{ win_probability_chart.away_area_color }}" clip-path="url(#wp-clip-upper)" d="{{ win_probability_chart.delta_area }}"></path>
+                                <path class="wp-delta-area-down" fill="{{ win_probability_chart.home_area_color }}" clip-path="url(#wp-clip-lower)" d="{{ win_probability_chart.delta_area }}"></path>
+                                <polyline class="wp-delta-line" style="stroke: {{ win_probability_chart.line_color }};" points="{{ win_probability_chart.delta_line }}"></polyline>
                                 <circle class="wp-current-dot {% if win_probability_chart.current_is_away_favored %}away{% else %}home{% endif %}" cx="{{ win_probability_chart.point_x }}" cy="{{ win_probability_chart.point_y }}" r="4.5"><title>{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} win probability: {{ away_win_probability }}{% else %}{{ home_abbr }} win probability: {{ home_win_probability }}{% endif %}</title></circle>
                                 <text class="wp-current-label" x="{{ win_probability_chart.label_x }}" y="{{ win_probability_chart.label_y }}" text-anchor="end">{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} {{ away_win_probability }}{% else %}{{ home_abbr }} {{ home_win_probability }}{% endif %}<title>{% if win_probability_chart.current_is_away_favored %}{{ away_abbr }} win probability: {{ away_win_probability }}{% else %}{{ home_abbr }} win probability: {{ home_win_probability }}{% endif %}</title></text>
                             </svg>

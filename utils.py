@@ -96,9 +96,13 @@ _WIN_PROB_MIN_FETCH_SECONDS = 3
 _WIN_PROB_MAX_GAMES_PER_TEAM = 2
 
 _CACHE_FILE = os.path.join(os.path.dirname(__file__), "win_prob_cache.json")
+_TEAM_PRIMARY_COLORS_FILE = os.path.join(
+    os.path.dirname(__file__), "mlb_team_primary_colors.json"
+)
 
 # In-memory mirror of the disk cache, loaded once at startup.
 _WIN_PROB_CACHE: dict = {"games": {}, "team_games": {}}
+_TEAM_PRIMARY_COLORS_CACHE: dict[str, str] | None = None
 
 
 def _load_disk_cache() -> None:
@@ -123,6 +127,58 @@ def _save_disk_cache() -> None:
             json.dump(_WIN_PROB_CACHE, f)
     except OSError:
         pass
+
+
+def _load_team_primary_colors() -> dict[str, str]:
+    """Load and cache primary team colors keyed by StatsAPI abbreviation."""
+    global _TEAM_PRIMARY_COLORS_CACHE
+
+    if _TEAM_PRIMARY_COLORS_CACHE is not None:
+        return _TEAM_PRIMARY_COLORS_CACHE
+
+    try:
+        with open(_TEAM_PRIMARY_COLORS_FILE, "r") as f:
+            raw = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        _TEAM_PRIMARY_COLORS_CACHE = {}
+        return _TEAM_PRIMARY_COLORS_CACHE
+
+    if not isinstance(raw, dict):
+        _TEAM_PRIMARY_COLORS_CACHE = {}
+        return _TEAM_PRIMARY_COLORS_CACHE
+
+    normalized: dict[str, str] = {}
+    for key, value in raw.items():
+        abbr = str(key).upper().strip()
+        color = str(value).strip()
+        if abbr and color:
+            normalized[abbr] = color
+
+    _TEAM_PRIMARY_COLORS_CACHE = normalized
+    return _TEAM_PRIMARY_COLORS_CACHE
+
+
+def _team_primary_color(team_abbr: str | None, default: str = "#b8b8b8") -> str:
+    """Return a team primary color from local JSON using StatsAPI abbreviation."""
+    if not team_abbr:
+        return default
+
+    colors = _load_team_primary_colors()
+    return colors.get(str(team_abbr).upper().strip(), default)
+
+
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """Convert #RRGGBB to rgba(r,g,b,a). Invalid input falls back to neutral gray."""
+    color = (hex_color or "").strip().lstrip("#")
+    if len(color) != 6:
+        return f"rgba(184, 184, 184, {alpha})"
+    try:
+        r = int(color[0:2], 16)
+        g = int(color[2:4], 16)
+        b = int(color[4:6], 16)
+    except ValueError:
+        return f"rgba(184, 184, 184, {alpha})"
+    return f"rgba({r}, {g}, {b}, {alpha})"
 
 
 def _prune_cache(home_team_id: int | None, away_team_id: int | None, game_pk: int) -> None:
@@ -381,13 +437,21 @@ def _win_probability_trend(game_pk: int | None, team: str) -> dict[str, str]:
     return {"points": _sparkline_points(values), "direction": direction}
 
 
-def _win_probability_area_chart(game_pk: int | None) -> dict[str, str | bool | float]:
+def _win_probability_area_chart(
+    game_pk: int | None,
+    away_abbr: str | None = None,
+    home_abbr: str | None = None,
+) -> dict[str, str | bool | float]:
     """Build SVG path/line data for win-probability delta (away - home)."""
     if not game_pk:
         return {
             "has_data": False,
             "delta_line": "",
             "delta_area": "",
+            "away_area_color": "rgba(47, 194, 110, 0.20)",
+            "home_area_color": "rgba(224, 91, 91, 0.20)",
+            "away_line_color": "#2fc26e",
+            "home_line_color": "#e05b5b",
             "point_x": 0.0,
             "point_y": 0.0,
             "label_x": 0.0,
@@ -401,6 +465,10 @@ def _win_probability_area_chart(game_pk: int | None) -> dict[str, str | bool | f
             "has_data": False,
             "delta_line": "",
             "delta_area": "",
+            "away_area_color": "rgba(47, 194, 110, 0.20)",
+            "home_area_color": "rgba(224, 91, 91, 0.20)",
+            "away_line_color": "#2fc26e",
+            "home_line_color": "#e05b5b",
             "point_x": 0.0,
             "point_y": 0.0,
             "label_x": 0.0,
@@ -414,6 +482,10 @@ def _win_probability_area_chart(game_pk: int | None) -> dict[str, str | bool | f
             "has_data": False,
             "delta_line": "",
             "delta_area": "",
+            "away_area_color": "rgba(47, 194, 110, 0.20)",
+            "home_area_color": "rgba(224, 91, 91, 0.20)",
+            "away_line_color": "#2fc26e",
+            "home_line_color": "#e05b5b",
             "point_x": 0.0,
             "point_y": 0.0,
             "label_x": 0.0,
@@ -422,9 +494,9 @@ def _win_probability_area_chart(game_pk: int | None) -> dict[str, str | bool | f
         }
 
     width = 560
-    height = 150
+    height = 190
     padding_x = 36
-    padding_y = 10
+    padding_y = 14
     middle_y = height / 2
     half_height = (height / 2) - padding_y
     step_x = (width - (2 * padding_x)) / (len(history) - 1)
@@ -467,10 +539,18 @@ def _win_probability_area_chart(game_pk: int | None) -> dict[str, str | bool | f
     else:
         label_y = min(height - 6.0, last_y + 14.0)
 
+    away_color = _team_primary_color(away_abbr, default="#2fc26e")
+    home_color = _team_primary_color(home_abbr, default="#e05b5b")
+
     return {
         "has_data": True,
         "delta_line": delta_line,
         "delta_area": delta_area,
+        "away_area_color": _hex_to_rgba(away_color, 0.20),
+        "home_area_color": _hex_to_rgba(home_color, 0.20),
+        "away_line_color": away_color,
+        "home_line_color": home_color,
+        "line_color": away_color if current_is_away_favored else home_color,
         "point_x": point_x,
         "point_y": point_y,
         "label_x": label_x,

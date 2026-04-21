@@ -51,22 +51,27 @@ def _is_cancelled_status(detailed_state: str | None) -> bool:
 
 
 _WALK_EVENTS = frozenset({"walk", "intent walk"})
+_INTENTIONAL_WALK_EVENTS = frozenset({"intent walk"})
 _STEAL_EVENTS = frozenset({"stolen base 2b", "stolen base 3b", "stolen base home"})
+_DOUBLE_EVENTS = frozenset({"double"})
+_TRIPLE_EVENTS = frozenset({"triple"})
 
 
-def _base_indicator(all_plays: list, offense: dict, base: str) -> str:
-    """Return 'W', 'S', or '' for the runner on *base* ('first'/'second'/'third').
+def _base_indicator(all_plays: list, offense: dict, base: str) -> dict:
+    """Return {'label': str, 'tooltip': str} for the runner on *base*.
 
-    Logic: scan all plays in reverse to find the most recent event that placed
-    this runner at their current base.  If that event was a walk → 'W'.
-    If it was a stolen base → 'S'.  Any other advancement (hit, error, etc.) → ''.
+    Labels:
+      1B: 'W' (walk), 'IW' (intentional walk), '' (other)
+      2B: 'S' (stolen), 'D' (double), '' (other)
+      3B: 'S' (stolen), 'T' (triple), '' (other)
     """
+    _empty = {"label": "", "tooltip": ""}
     runner = offense.get(base)
     if not runner:
-        return ""
+        return _empty
     runner_id = runner.get("id")
     if runner_id is None:
-        return ""
+        return _empty
 
     base_number = {"first": 1, "second": 2, "third": 3}.get(base)
 
@@ -75,9 +80,6 @@ def _base_indicator(all_plays: list, offense: dict, base: str) -> str:
         for runner_event in (play.get("runners") or []):
             movement = runner_event.get("movement") or {}
             details = runner_event.get("details") or {}
-            person_id = (runner_event.get("details") or {}).get("runner", {}).get("id") \
-                        or (runner_event.get("credits") and None)
-            # runner id lives under details.runner
             person_id = ((runner_event.get("details") or {}).get("runner") or {}).get("id")
             if person_id != runner_id:
                 continue
@@ -88,22 +90,27 @@ def _base_indicator(all_plays: list, offense: dict, base: str) -> str:
             # This event placed the runner at the target base.
             event = (details.get("event") or "").lower()
             if event in _STEAL_EVENTS:
-                return "S"
-            # Any other movement (hit, FC, error, etc.) clears the indicator.
-            return ""
+                return {"label": "S", "tooltip": "Stolen base"}
+            if base_number == 2 and event in _DOUBLE_EVENTS:
+                return {"label": "D", "tooltip": "Double"}
+            if base_number == 3 and event in _TRIPLE_EVENTS:
+                return {"label": "T", "tooltip": "Triple"}
+            # Any other movement — no indicator.
+            return _empty
 
-        # Also check if the runner was the batter in this play and reached first via walk.
+        # Check if the runner was the batter and reached first via walk.
         if base_number == 1:
             matchup = play.get("matchup") or {}
             batter_id = (matchup.get("batter") or {}).get("id")
             if batter_id == runner_id:
                 event = ((play.get("result") or {}).get("event") or "").lower()
+                if event in _INTENTIONAL_WALK_EVENTS:
+                    return {"label": "IW", "tooltip": "Intentional walk"}
                 if event in _WALK_EVENTS:
-                    return "W"
-                # Batter reached another way — clear indicator.
-                return ""
+                    return {"label": "W", "tooltip": "Walk"}
+                return _empty
 
-    return ""
+    return _empty
 
 # Division IDs to display on /standings, in render order.
 # Verified against /api/v1/standings: AL West=200, AL East=201, NL West=203, NL East=204.
@@ -748,7 +755,11 @@ def get_game_score(game_id: int):
     away_win_probability_trend = _win_probability_trend(
         payload.get("gamePk", game_id), "away"
     )
-    win_probability_chart = _win_probability_area_chart(payload.get("gamePk", game_id))
+    win_probability_chart = _win_probability_area_chart(
+        payload.get("gamePk", game_id),
+        away_abbr=away_abbr,
+        home_abbr=home_abbr,
+    )
 
     # Build top/bottom inning markers to label the chart x-axis timeline.
     inning_count = max(_safe_int(inning_number, 0), len(linescore.get("innings") or []))
@@ -807,6 +818,10 @@ def get_game_score(game_id: int):
         ]
     )
 
+    _first_ind = _base_indicator(all_plays, offense, "first")
+    _second_ind = _base_indicator(all_plays, offense, "second")
+    _third_ind = _base_indicator(all_plays, offense, "third")
+
     return render_template(
         "game.html",
         game_pk=game_pk,
@@ -849,9 +864,12 @@ def get_game_score(game_id: int):
         first_base=bool(offense.get("first")),
         second_base=bool(offense.get("second")),
         third_base=bool(offense.get("third")),
-        first_base_indicator=_base_indicator(all_plays, offense, "first"),
-        second_base_indicator=_base_indicator(all_plays, offense, "second"),
-        third_base_indicator=_base_indicator(all_plays, offense, "third"),
+        first_base_indicator=_first_ind["label"],
+        first_base_tooltip=_first_ind["tooltip"],
+        second_base_indicator=_second_ind["label"],
+        second_base_tooltip=_second_ind["tooltip"],
+        third_base_indicator=_third_ind["label"],
+        third_base_tooltip=_third_ind["tooltip"],
         is_active=is_active,
         outs=outs,
         show_outs=inning_half in ("top", "bottom"),
