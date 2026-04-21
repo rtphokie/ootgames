@@ -119,6 +119,13 @@ body {
     font-weight: 400;
     color: var(--off);
 }
+.team-challenges {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--off);
+    margin-left: 6px;
+    letter-spacing: 0.04em;
+}
 .batter-order {
     font-size: 11px;
     color: var(--off);

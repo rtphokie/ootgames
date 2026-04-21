@@ -707,6 +707,15 @@ def get_game_score(game_id: int):
     if weather_temp in (None, ""):
         weather_temp = ""
     weather_wind = weather.get("wind") or ""
+    review_data = game_data.get("review") or {}
+    abs_data = game_data.get("absChallenges") or {}
+    mound_data = game_data.get("moundVisits") or {}
+    away_reviews_remaining = (review_data.get("away") or {}).get("remaining")
+    away_abs_remaining = (abs_data.get("away") or {}).get("remaining")
+    away_mound_remaining = (mound_data.get("away") or {}).get("remaining")
+    home_reviews_remaining = (review_data.get("home") or {}).get("remaining")
+    home_abs_remaining = (abs_data.get("home") or {}).get("remaining")
+    home_mound_remaining = (mound_data.get("home") or {}).get("remaining")
 
     # Only fetch win probability for live (in-progress) games.
     is_active = (
@@ -850,6 +859,12 @@ def get_game_score(game_id: int):
         weather_condition=weather_condition,
         weather_temp=weather_temp,
         weather_wind=weather_wind,
+        away_reviews_remaining=away_reviews_remaining,
+        away_abs_remaining=away_abs_remaining,
+        away_mound_remaining=away_mound_remaining,
+        home_reviews_remaining=home_reviews_remaining,
+        home_abs_remaining=home_abs_remaining,
+        home_mound_remaining=home_mound_remaining,
     )
 
 
