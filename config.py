@@ -2,7 +2,7 @@
 MLB_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule"
 MLB_GAME_FEED_URL = "https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
 MLB_WIN_PROBABILITY_URL = (
-    "https://statsapi.mlb.com/api/v1/game/{game_pk}/winProbability"
+    "https://statsapi.mlb.com/api/v1/game/{game_pk}/winProbability?fields=playEndTime,homeTeamWinProbability,awayTeamWinProbability"
 )
 MLB_STANDINGS_URL = "https://statsapi.mlb.com/api/v1/standings"
 MLB_SPORTS_URL = "https://statsapi.mlb.com/api/v1/sports"

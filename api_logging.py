@@ -8,7 +8,12 @@ _LOG_FILE = os.path.join(os.path.dirname(__file__), "statsapi_calls.log")
 _LOG_LOCK = Lock()
 
 
-def log_statsapi_call(url: str, params: dict | None = None, method: str = "GET") -> None:
+def log_statsapi_call(
+    url: str,
+    params: dict | None = None,
+    method: str = "GET",
+    size_bytes: int | None = None,
+) -> None:
     """Append a timestamped line for outbound requests to statsapi.mlb.com."""
     try:
         parsed = urlparse(url)
@@ -21,7 +26,8 @@ def log_statsapi_call(url: str, params: dict | None = None, method: str = "GET")
 
     timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     serialized_params = json.dumps(params or {}, sort_keys=True, separators=(",", ":"))
-    line = f"{timestamp} | {method.upper()} {url} | params={serialized_params}\n"
+    size_str = f" | size={size_bytes / 1024:.1f}KB" if size_bytes is not None else ""
+    line = f"{timestamp} | {method.upper()} {url} | params={serialized_params}{size_str}\n"
 
     try:
         with _LOG_LOCK:

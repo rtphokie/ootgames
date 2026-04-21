@@ -551,10 +551,13 @@ def get_game_score(game_id: int):
     return_date = _normalized_iso_date(request.args.get("date"), return_timezone)
 
     try:
-        log_statsapi_call(MLB_GAME_FEED_URL.format(game_pk=game_id))
         response = requests.get(
             MLB_GAME_FEED_URL.format(game_pk=game_id),
             timeout=10,
+        )
+        log_statsapi_call(
+            MLB_GAME_FEED_URL.format(game_pk=game_id),
+            size_bytes=len(response.content),
         )
     except requests.RequestException as exc:
         return jsonify({"error": "Failed to reach MLB API", "details": str(exc)}), 502
@@ -575,6 +578,10 @@ def get_game_score(game_id: int):
 
     # Top-level game metadata and team info.
     game_data = payload.get("gameData", {})
+    game_info = game_data.get("gameInfo") or {}
+    venue = game_data.get("venue") or {}
+    venue_location = venue.get("location") or {}
+    weather = game_data.get("weather") or {}
     status = (game_data.get("status") or {}).get("detailedState")
     is_warmup = _is_warmup_status(status)
     is_postponed = _is_postponed_status(status)
@@ -675,6 +682,31 @@ def get_game_score(game_id: int):
     away_abbr = away_team.get("abbreviation") or "AWAY"
     balls = _safe_int(linescore.get("balls"), 0)
     strikes = _safe_int(linescore.get("strikes"), 0)
+    venue_name = venue.get("name") or ""
+    venue_city = venue_location.get("city") or ""
+    venue_state = venue_location.get("stateAbbrev") or venue_location.get("state") or ""
+    venue_parts = [part for part in (venue_city, venue_state) if part]
+    if venue_name and venue_parts:
+        venue_name = f"{venue_name}, {', '.join(venue_parts)}"
+    capacity_raw = game_info.get("capacity")
+    capacity = ""
+    if capacity_raw not in (None, ""):
+        try:
+            capacity = f"{int(str(capacity_raw).replace(',', '')):,}"
+        except (TypeError, ValueError):
+            capacity = str(capacity_raw)
+    attendance_raw = game_info.get("attendance")
+    attendance = ""
+    if attendance_raw not in (None, ""):
+        try:
+            attendance = f"{int(str(attendance_raw).replace(',', '')):,}"
+        except (TypeError, ValueError):
+            attendance = str(attendance_raw)
+    weather_condition = weather.get("condition") or ""
+    weather_temp = weather.get("temp")
+    if weather_temp in (None, ""):
+        weather_temp = ""
+    weather_wind = weather.get("wind") or ""
 
     # Only fetch win probability for live (in-progress) games.
     is_active = (
@@ -719,6 +751,12 @@ def get_game_score(game_id: int):
                 "status": status,
                 "home_team": home_team.get("name"),
                 "home_score": home_score,
+                "attendance": attendance,
+                "capacity": capacity,
+                "venue": venue_name,
+                "weather": weather_condition,
+                "temp": weather_temp,
+                "wind": weather_wind,
                 "visitor_team": away_team.get("name"),
                 "visitor_score": away_score,
             }
@@ -804,8 +842,14 @@ def get_game_score(game_id: int):
             and away_score is not None
             and home_score > away_score
         ),
+        venue_name=venue_name,
+        capacity=capacity,
         win_probability_chart=win_probability_chart,
         chart_inning_markers=chart_inning_markers,
+        attendance=attendance,
+        weather_condition=weather_condition,
+        weather_temp=weather_temp,
+        weather_wind=weather_wind,
     )
 
 

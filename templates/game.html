@@ -158,6 +158,23 @@
                     {% endif %}
                 </td>
             </tr>
+            <tr>
+                <td colspan="4" class="game-meta-row-cell">
+                    <div class="game-meta-row">
+                        <div class="game-meta-block game-meta-block-left">
+                            {% if venue_name %}<span class="game-meta-item"><span class="meta-label"></span><span class="meta-value">{{ venue_name }}</span></span>{% endif %}
+                            {% if attendance %}<span class="game-meta-item"><span class="meta-label">ATT</span><span class="meta-value">{{ attendance }}</span></span>{% endif %}
+                            {% if capacity %}<span class="game-meta-item"><span class="meta-label">CAP</span><span class="meta-value">{{ capacity }}</span></span>{% endif %}
+                        </div>
+                        <div class="game-meta-block game-meta-block-center">
+                            {% if weather_condition %}<span class="game-meta-item"><span class="meta-label"></span><span class="meta-value">{{ weather_condition }}</span></span>{% endif %}
+                            {% if weather_temp %}<span class="game-meta-item"><span class="meta-label"></span><span class="meta-value">{{ weather_temp }}&deg;F</span></span>{% endif %}
+                            {% if weather_wind %}<span class="game-meta-item"><span class="meta-label"> wind </span><span class="meta-value">{{ weather_wind }}</span></span>{% endif %}
+                        </div>
+                        <div class="game-meta-block game-meta-block-right"></div>
+                    </div>
+                </td>
+            </tr>
         </table>
         <a class="return-link" href="/otg?date={{ return_date }}&amp;tz={{ return_timezone }}&amp;sportId={{ return_sport_id }}" aria-label="Back to schedule">&larr;</a>
     </div>

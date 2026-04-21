@@ -46,8 +46,8 @@ def _fetch_statsapi_json(
             return cached["payload"], None
 
     try:
-        log_statsapi_call(url, params=params)
         response = requests.get(url, params=params, timeout=timeout)
+        log_statsapi_call(url, params=params, size_bytes=len(response.content))
     except requests.RequestException as exc:
         if cached:
             return cached["payload"], None
@@ -299,11 +299,11 @@ def _current_win_probability(
 
     try:
         win_prob_url = MLB_WIN_PROBABILITY_URL.format(game_pk=game_pk)
-        log_statsapi_call(win_prob_url)
         response = requests.get(
             win_prob_url,
             timeout=3,
         )
+        log_statsapi_call(win_prob_url, size_bytes=len(response.content))
     except requests.RequestException:
         if cache_entry:
             return cache_entry.get("home"), cache_entry.get("away")
