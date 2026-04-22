@@ -4,43 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MLB Standings</title>
-    <script>
-        function updateRefreshLine(refreshMs) {
-            const bar = document.getElementById("standings-refresh-bar");
-            if (!bar) return;
-
-            const start = Date.now();
-            const timer = setInterval(function () {
-                const elapsed = Date.now() - start;
-                const remainingMs = Math.max(0, refreshMs - elapsed);
-                const percent = (remainingMs / refreshMs) * 100;
-                bar.style.width = percent.toFixed(2) + "%";
-                if (remainingMs <= 0) {
-                    clearInterval(timer);
-                }
-            }, 100);
-        }
-
-        (function () {
-            const url = new URL(window.location.href);
-            const hasTimezone = url.searchParams.has("tz") || url.searchParams.has("timezone");
-            if (hasTimezone) return;
-
-            const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (!browserTimezone) return;
-
-            url.searchParams.set("tz", browserTimezone);
-            window.location.replace(url.toString());
-        }());
-
-        window.addEventListener("DOMContentLoaded", function () {
-            const refreshMs = 15000;
-            updateRefreshLine(refreshMs);
-            setTimeout(function () {
-                window.location.reload();
-            }, refreshMs);
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/standings.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='standings.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='refresh_bar.css') }}">
 </head>
