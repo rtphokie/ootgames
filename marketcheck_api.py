@@ -14,7 +14,7 @@ except ImportError:
 
 
 # Set up requests_cache to cache API responses
-requests_cache.install_cache('marketcheck_cache', expire_after=86400)  # 24 hour cache
+requests_cache.install_cache('/var/data/marketcheck_cache', expire_after=86400)  # 24 hour cache
 
 def query_marketcheck_api(
     api_key: str,
@@ -89,4 +89,19 @@ def query_marketcheck_api(
         return {"num_found": num_found, "listings": all_listings, "cached": False}
     except Exception as e:
         print(f"Error querying MarketCheck API: {e}")
+        return None
+
+
+def query_listing_extra(api_key: str, listing_id: str) -> Optional[Dict[str, Any]]:
+    url = f"https://api.marketcheck.com/v2/listing/car/{listing_id}/extra"
+    try:
+        session = requests_cache.CachedSession('/var/data/marketcheck_extra_cache', expire_after=604800)  # 7 days
+        response = session.get(url, params={"api_key": api_key})
+        response.raise_for_status()
+        cached = getattr(response, "from_cache", False)
+        if not cached:
+            print(f"MarketCheck API call: listing extra id={listing_id}")
+        return response.json()
+    except Exception as e:
+        print(f"Error querying listing extra {listing_id}: {e}")
         return None

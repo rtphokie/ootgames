@@ -13,7 +13,7 @@ except ImportError:
 
 
 # Set up requests_cache to cache API responses
-requests_cache.install_cache('marketcheck_cache', expire_after=3600)  # 1 hour cache
+requests_cache.install_cache('/var/data/marketcheck_cache', expire_after=3600)  # 1 hour cache
 
 
 def _add_distances(ref_lon, ref_lat, dealer_lon, dealer_lat):
@@ -32,7 +32,7 @@ def query_marketcheck_api(
     make: str = 'Ford',
     model: str = 'Escape',
     year_range: str = '2023-2026',
-    powertrain_type: str = "HEV",
+    powertrain_type: str = "BEV,HEV,MHEV,PHEV",
     rows: int = 50,
     start: int = 0
 ) -> Optional[Dict[str, Any]]:
@@ -53,7 +53,7 @@ def query_marketcheck_api(
     Returns:
         dict or None: API response JSON or None on error.
     """
-    # https://api.marketcheck.com/v2/search/car/active?api_key=m430eAZiW2S90NYize5sMhcLwg3BPXGR&zip=64735&radius=100&make=Ford&model=Escape&powertrain_type=HEV
+    # https://docs.marketcheck.com/docs/api/cars/inventory/inventory-search
     url = "https://api.marketcheck.com/v2/search/car/active"
     params = {
         "api_key": api_key,

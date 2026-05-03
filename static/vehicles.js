@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (row.style.display === "none") return;
             const make = row.dataset.make;
             const model = row.dataset.model;
-            const trim = row.children[3].innerText.trim() || "—";
+            const trim = row.children[2].innerText.trim().replace(/\bHybrid\b/gi, "").trim() || "—";
             const key = `${make}||${model}`;
             if (!groups[key]) groups[key] = { make, model, total: 0, trims: {} };
             groups[key].total++;
@@ -44,12 +44,16 @@ document.addEventListener("DOMContentLoaded", function () {
         const maxMiles = parseFloat((document.getElementById("miles-max").value || "").replace(/[^\d.]/g, "")) || Infinity;
         const maxDist = parseFloat((document.getElementById("dist-max").value || "").replace(/[^\d.]/g, "")) || Infinity;
         const selectedYears = new Set([...document.querySelectorAll(".year-filter:checked")].map(cb => cb.value));
+        const selectedDrivetrains = new Set([...document.querySelectorAll(".drivetrain-filter:checked")].map(cb => cb.value));
+        const selectedPowertrains = new Set([...document.querySelectorAll(".powertrain-filter:checked")].map(cb => cb.value));
         tbody.querySelectorAll("tr").forEach(row => {
             const price = parseFloat((row.dataset.price || "").replace(/[^\d.]/g, ""));
             const miles = parseFloat((row.dataset.miles || "").replace(/[^\d.]/g, ""));
             const dist = parseFloat((row.dataset.distance || "").replace(/[^\d.]/g, ""));
             const visible = checkedVehicles.has(row.dataset.vehicle)
                 && (selectedYears.size === 0 || selectedYears.has(row.dataset.year))
+                && (selectedDrivetrains.size === 0 || selectedDrivetrains.has(row.dataset.drivetrain))
+                && (selectedPowertrains.size === 0 || selectedPowertrains.has(row.dataset.powertrain))
                 && (isNaN(price) || price <= maxPrice)
                 && (isNaN(miles) || miles <= maxMiles)
                 && (isNaN(dist) || dist <= maxDist);
@@ -61,6 +65,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".vehicle-filter").forEach(cb => cb.addEventListener("change", applyFilters));
 
     document.querySelectorAll(".year-filter").forEach(cb => cb.addEventListener("change", applyFilters));
+    document.querySelectorAll(".drivetrain-filter").forEach(cb => cb.addEventListener("change", applyFilters));
+    document.querySelectorAll(".powertrain-filter").forEach(cb => cb.addEventListener("change", applyFilters));
 
     let searchDebounce;
     function onNumericInput() {

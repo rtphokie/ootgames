@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vehicle Detail</title>
+    <link rel="stylesheet" href="/static/vehicles.css">
+    <style>
+        .detail-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.4em 1.5em;
+            margin: 1.5em auto;
+            width: fit-content;
+        }
+        .detail-label { color: #ffb300; font-weight: 600; }
+        .detail-photo {
+            display: block;
+            max-width: 600px;
+            width: 100%;
+            margin: 1.5em auto;
+            border-radius: 8px;
+        }
+        .sections {
+            width: 90%;
+            max-width: 800px;
+            margin: 0 auto 2em;
+        }
+        .section-heading {
+            color: #ffb300;
+            font-weight: 700;
+            margin: 1.2em 0 0.4em;
+            font-size: 1.05em;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.2em;
+        }
+        ul.feature-list {
+            margin: 0.2em 0 0 1.2em;
+            padding: 0;
+            color: #d0d0d0;
+        }
+        ul.feature-list li { margin: 0.15em 0; }
+        .back { display: block; text-align: center; margin: 1em; }
+    </style>
+</head>
+<body>
+    <h1>Vehicle Detail</h1>
+    <a class="back" href="/vehicles">&larr; Back to inventory</a>
+
+    {% if first_photo %}
+    <img class="detail-photo" src="{{ first_photo }}" alt="Vehicle photo">
+    {% endif %}
+
+    <div class="detail-grid">
+        <span class="detail-label">Exterior Color</span><span>{{ colors.exterior }}</span>
+        <span class="detail-label">Interior Color</span><span>{{ colors.interior }}</span>
+        <span class="detail-label">Inventory Type</span><span>{{ data.inventory_type or '' }}</span>
+        <span class="detail-label">First Seen</span><span>{{ first_seen }}</span>
+        <span class="detail-label">Last Seen</span><span>{{ last_seen }}</span>
+        <span class="detail-label">Miles</span><span>{{ miles }}</span>
+        <span class="detail-label">Price</span><span>{{ price }}</span>
+    </div>
+
+    <div class="sections">
+        {% for heading, items in sections %}
+        <div class="section-heading">* {{ heading }}</div>
+        <ul class="feature-list">
+            {% for item in items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% endfor %}
+    </div>
+</body>
+</html>

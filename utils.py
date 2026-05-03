@@ -112,7 +112,7 @@ def _ordinal(value: int) -> str:
 _WIN_PROB_MIN_FETCH_SECONDS = 3
 _WIN_PROB_MAX_GAMES_PER_TEAM = 2
 
-_CACHE_FILE = os.path.join(os.path.dirname(__file__), "win_prob_cache.json")
+_CACHE_FILE = "/var/data/win_prob_cache.json"
 _TEAM_PRIMARY_COLORS_FILE = os.path.join(
     os.path.dirname(__file__), "mlb_team_primary_colors.json"
 )

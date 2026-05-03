@@ -28,7 +28,7 @@ from flask import Flask, jsonify, render_template, request
 from api_logging import log_statsapi_call
 
 # --- Vehicle Inventory Endpoint ---
-from marketcheck_api import query_marketcheck_api
+from marketcheck_api import query_marketcheck_api, query_listing_extra
 
 
 # MLB Stats API docs: https://github.com/toddrob99/MLB-StatsAPI/wiki/Endpoints
@@ -42,7 +42,7 @@ def vehicles():
     api_key = os.environ.get("MARKETCHECK_API_KEY", "")
     zip_code = request.args.get("zip", "64735")
     year_range = request.args.get("year_range", "2023-2026")
-    powertrain_type = request.args.get("powertrain_type", "HEV")
+    powertrain_type = request.args.get("powertrain_type", "HEV,PHEV")
     price_max = int(request.args.get("price_max", 35000))
     miles_max = int(request.args.get("miles_max", 40000))
     dist_max = int(request.args.get("dist_max", 90))
@@ -59,6 +59,14 @@ def vehicles():
             return f"{f:,.1f}" if f != int(f) else f"{int(f):,}"
         except (TypeError, ValueError):
             return ""
+
+    def _normalize_drivetrain(val):
+        v = (val or "").lower()
+        if "front" in v or "fwd" in v:
+            return "FWD"
+        if "all" in v or "awd" in v or "4wd" in v or "4x4" in v:
+            return "AWD"
+        return ""
 
     def _fmt_color(ext, int_):
         if ext and int_:
@@ -112,10 +120,14 @@ def vehicles():
                     build = car.get("build", {}) or {}
                     vehicles.append({
                         "filter_key": f"{combo_make}|{combo_model}",
+                        "listing_id": car.get("id", ""),
+                        "vin": car.get("vin", ""),
                         "make": build.get("make", combo_make),
                         "model": build.get("model", combo_model),
                         "year": build.get("year", ""),
                         "version": build.get("version", ""),
+                        "powertrain": (car.get("powertrain_type") or build.get("powertrain_type", "")),
+                        "drivetrain": _normalize_drivetrain(build.get("drivetrain")),
                         "color": _fmt_color(car.get("base_ext_color"), car.get("base_int_color")),
                         "miles": _fmt_number(car.get("miles")),
                         "days_on_lot": car.get("dom", ""),
@@ -129,6 +141,70 @@ def vehicles():
                     })
     vehicles.sort(key=lambda c: (float(c["distance_miles"].replace(",", "")) if c["distance_miles"] else float("inf")))
     return render_template("vehicles.html", vehicles=vehicles, price_max=price_max, miles_max=miles_max, dist_max=dist_max, zip_code=zip_code)
+
+
+@app.route("/vehicles/detail/<listing_id>")
+def vehicle_detail(listing_id):
+    from datetime import datetime as dt
+    api_key = os.environ.get("MARKETCHECK_API_KEY", "")
+    data = query_listing_extra(api_key, listing_id)
+    if data is None:
+        return "Listing not found", 404
+
+    def _ts(val):
+        try:
+            return dt.fromtimestamp(int(val)).strftime("%Y-%m-%d")
+        except (TypeError, ValueError):
+            return str(val) if val else ""
+
+    def _fmt_dollars(val):
+        try:
+            return f"${int(val):,}"
+        except (TypeError, ValueError):
+            return ""
+
+    def _fmt_number(val):
+        try:
+            return f"{int(val):,}"
+        except (TypeError, ValueError):
+            return ""
+
+    ext = data.get("exterior_color", "")
+    base_ext = data.get("base_ext_color", "")
+    int_ = data.get("interior_color", "")
+    base_int = data.get("base_int_color", "")
+    colors = {
+        "exterior": f"{ext} ({base_ext})" if base_ext and base_ext != ext else ext,
+        "interior": f"{int_} ({base_int})" if base_int and base_int != int_ else int_,
+    }
+
+    media = data.get("media") or {}
+    photo_links = media.get("photo_links") or []
+    first_photo = photo_links[0] if photo_links else None
+
+    raw_extra = data.get("extra") or {}
+    HIGH_VALUE_KEY = "high_value_features"
+    sections = []
+    if HIGH_VALUE_KEY in raw_extra:
+        sections.append(("High Value Features", raw_extra[HIGH_VALUE_KEY]))
+    for key, val in raw_extra.items():
+        if key == HIGH_VALUE_KEY:
+            continue
+        if isinstance(val, list) and val:
+            sections.append((key.replace("_", " ").title(), val))
+
+    return render_template(
+        "vehicle_detail.html",
+        data=data,
+        colors=colors,
+        first_photo=first_photo,
+        sections=sections,
+        first_seen=_ts(data.get("first_seen_at")),
+        last_seen=_ts(data.get("last_seen_at")),
+        miles=_fmt_number(data.get("miles")),
+        price=_fmt_dollars(data.get("price")),
+    )
+
 
 # Track game_pks known to be final so we can bust standings cache when new games finish.
 _FINAL_GAME_PKS: set[int] = set()

@@ -15,6 +15,16 @@
             <label><input type="checkbox" class="vehicle-filter" value="Toyota|Corolla Cross" checked> Toyota Corolla Cross</label>
         </div>
         <div class="filter-group">
+            <span class="filter-label">Powertrain</span>
+            <label><input type="checkbox" class="powertrain-filter" value="HEV" checked> HEV</label>
+            <label><input type="checkbox" class="powertrain-filter" value="PHEV"> PHEV</label>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Drivetrain</span>
+            <label><input type="checkbox" class="drivetrain-filter" value="FWD" checked> FWD</label>
+            <label><input type="checkbox" class="drivetrain-filter" value="AWD" checked> AWD</label>
+        </div>
+        <div class="filter-group">
             <span class="filter-label">Year</span>
             <label><input type="checkbox" class="year-filter" value="2023" checked> 2023</label>
             <label><input type="checkbox" class="year-filter" value="2024" checked> 2024</label>
@@ -37,8 +47,7 @@
     <table border="1" cellpadding="6" cellspacing="0">
         <thead>
             <tr>
-                <th>Make</th>
-                <th>Model</th>
+                <th>Vehicle</th>
                 <th>Year</th>
                 <th>Version</th>
                 <th>Color (Ext/Int)</th>
@@ -52,9 +61,8 @@
         </thead>
         <tbody>
         {% for car in vehicles %}
-            <tr data-vehicle="{{ car.filter_key }}" data-make="{{ car.make }}" data-model="{{ car.model }}" data-year="{{ car.year }}" data-price="{{ car.price }}" data-miles="{{ car.miles }}" data-distance="{{ car.distance_miles }}">
-                <td>{{ car.make }}</td>
-                <td>{{ car.model }}</td>
+            <tr data-vehicle="{{ car.filter_key }}" data-make="{{ car.make }}" data-model="{{ car.model }}" data-year="{{ car.year }}" data-powertrain="{{ car.powertrain }}" data-drivetrain="{{ car.drivetrain }}" data-price="{{ car.price }}" data-miles="{{ car.miles }}" data-distance="{{ car.distance_miles }}">
+                <td>{{ car.make }} {{ car.model }}</td>
                 <td>{{ car.year }}</td>
                 <td>{{ car.version or '' }}</td>
                 <td>{{ car.color }}</td>
