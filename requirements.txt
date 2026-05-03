@@ -1,4 +1,3 @@
-f ask
 gunicorn
 requests
 pgeocode
