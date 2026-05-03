@@ -52,8 +52,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const dist = parseFloat((row.dataset.distance || "").replace(/[^\d.]/g, ""));
             const visible = checkedVehicles.has(row.dataset.vehicle)
                 && (selectedYears.size === 0 || selectedYears.has(row.dataset.year))
-                && (selectedDrivetrains.size === 0 || selectedDrivetrains.has(row.dataset.drivetrain))
-                && (selectedPowertrains.size === 0 || selectedPowertrains.has(row.dataset.powertrain))
+                && (selectedDrivetrains.size === 0 || !row.dataset.drivetrain || selectedDrivetrains.has(row.dataset.drivetrain))
+                && (selectedPowertrains.size === 0 || !row.dataset.powertrain || selectedPowertrains.has(row.dataset.powertrain))
                 && (isNaN(price) || price <= maxPrice)
                 && (isNaN(miles) || miles <= maxMiles)
                 && (isNaN(dist) || dist <= maxDist);
