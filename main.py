@@ -27,9 +27,108 @@ import requests
 from flask import Flask, jsonify, render_template, request
 from api_logging import log_statsapi_call
 
+# --- Vehicle Inventory Endpoint ---
+from marketcheck_api import query_marketcheck_api
+
+
 # MLB Stats API docs: https://github.com/toddrob99/MLB-StatsAPI/wiki/Endpoints
 
 app = Flask(__name__)
+
+
+# /vehicles endpoint: show vehicle inventory table
+@app.route("/vehicles")
+def vehicles():
+    api_key = os.environ.get("MARKETCHECK_API_KEY", "")
+    zip_code = request.args.get("zip", "64735")
+    year_range = request.args.get("year_range", "2023-2026")
+    powertrain_type = request.args.get("powertrain_type", "HEV")
+    price_max = int(request.args.get("price_max", 35000))
+    miles_max = int(request.args.get("miles_max", 40000))
+    dist_max = int(request.args.get("dist_max", 90))
+
+    def _fmt_dollars(val):
+        try:
+            return f"${int(val):,}"
+        except (TypeError, ValueError):
+            return ""
+
+    def _fmt_number(val):
+        try:
+            f = float(val)
+            return f"{f:,.1f}" if f != int(f) else f"{int(f):,}"
+        except (TypeError, ValueError):
+            return ""
+
+    def _fmt_color(ext, int_):
+        if ext and int_:
+            return f"{ext} / {int_}"
+        if ext:
+            return f"{ext} (ext)"
+        return ""
+
+    combos = [("Ford", "Escape"), ("Toyota", "RAV4"), ("Toyota", "Corolla Cross")]
+    search_zips = [zip_code, "64106"]  # primary zip + Kansas City, MO
+    seen_vins = set()
+    vehicles = []
+    for combo_make, combo_model in combos:
+        for search_zip in search_zips:
+            result = query_marketcheck_api(
+                api_key=api_key,
+                zip_code=search_zip,
+                ref_zip=zip_code,
+                radius=100,
+                make=combo_make,
+                model=combo_model,
+                year_range=year_range,
+                powertrain_type=powertrain_type,
+            )
+            if result and "listings" in result:
+                for car in result["listings"]:
+                    vin = car.get("vin")
+                    if vin and vin in seen_vins:
+                        continue
+                    if vin:
+                        seen_vins.add(vin)
+                    price_val = car.get("price")
+                    miles_val = car.get("miles")
+                    try:
+                        if price_val is not None and int(price_val) > price_max:
+                            continue
+                    except (TypeError, ValueError):
+                        pass
+                    try:
+                        if miles_val is not None and int(miles_val) > miles_max:
+                            continue
+                    except (TypeError, ValueError):
+                        pass
+                    dist_val = car.get("distance_miles")
+                    try:
+                        if dist_val is not None and float(dist_val) > dist_max:
+                            continue
+                    except (TypeError, ValueError):
+                        pass
+                    dealer = car.get("dealer", {}) or {}
+                    build = car.get("build", {}) or {}
+                    vehicles.append({
+                        "filter_key": f"{combo_make}|{combo_model}",
+                        "make": build.get("make", combo_make),
+                        "model": build.get("model", combo_model),
+                        "year": build.get("year", ""),
+                        "version": build.get("version", ""),
+                        "color": _fmt_color(car.get("base_ext_color"), car.get("base_int_color")),
+                        "miles": _fmt_number(car.get("miles")),
+                        "days_on_lot": car.get("dom", ""),
+                        "price": _fmt_dollars(car.get("price")),
+                        "msrp": _fmt_dollars(car.get("msrp")),
+                        "dealer_name": dealer.get("name", ""),
+                        "dealer_city": dealer.get("city", ""),
+                        "dealer_state": dealer.get("state", ""),
+                        "vdp_url": car.get("vdp_url", "#"),
+                        "distance_miles": _fmt_number(car.get("distance_miles")),
+                    })
+    vehicles.sort(key=lambda c: (float(c["distance_miles"].replace(",", "")) if c["distance_miles"] else float("inf")))
+    return render_template("vehicles.html", vehicles=vehicles, price_max=price_max, miles_max=miles_max, dist_max=dist_max, zip_code=zip_code)
 
 # Track game_pks known to be final so we can bust standings cache when new games finish.
 _FINAL_GAME_PKS: set[int] = set()

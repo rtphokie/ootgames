@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vehicle Inventory</title>
+    <!-- <link rel="stylesheet" href="/static/game.css"> -->
+    <link rel="stylesheet" href="/static/vehicles.css">
+</head>
+<body>
+    <h1>Vehicle Inventory</h1>
+    <div class="vehicle-filters">
+        <div class="filter-group">
+            <span class="filter-label">Vehicle</span>
+            <label><input type="checkbox" class="vehicle-filter" value="Ford|Escape" checked> Ford Escape</label>
+            <label><input type="checkbox" class="vehicle-filter" value="Toyota|RAV4" checked> Toyota RAV4</label>
+            <label><input type="checkbox" class="vehicle-filter" value="Toyota|Corolla Cross" checked> Toyota Corolla Cross</label>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Year</span>
+            <label><input type="checkbox" class="year-filter" value="2023" checked> 2023</label>
+            <label><input type="checkbox" class="year-filter" value="2024" checked> 2024</label>
+            <label><input type="checkbox" class="year-filter" value="2025" checked> 2025</label>
+            <label><input type="checkbox" class="year-filter" value="2026" checked> 2026</label>
+        </div>
+        <form id="search-form" method="get" action="/vehicles" class="filter-group">
+            <span class="filter-label">Max Price</span>
+            <span class="price-prefix">$</span>
+            <input type="number" name="price_max" id="price-max" value="{{ price_max }}" min="0" step="1000">
+            <span class="filter-label">Max Miles</span>
+            <input type="number" name="miles_max" id="miles-max" value="{{ miles_max }}" min="0" step="5000">
+            <span class="filter-label">Max Distance</span>
+            <input type="number" name="dist_max" id="dist-max" value="{{ dist_max }}" min="0" step="10">
+            <input type="hidden" name="zip" value="{{ zip_code }}">
+            <button type="submit">Search</button>
+        </form>
+    </div>
+    <div id="vehicle-summary"></div>
+    <table border="1" cellpadding="6" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Make</th>
+                <th>Model</th>
+                <th>Year</th>
+                <th>Version</th>
+                <th>Color (Ext/Int)</th>
+                <th>Miles</th>
+                <th>Days on Lot</th>
+                <th>Price</th>
+                <th>MSRP</th>
+                <th>Dealer</th>
+                <th>Distance (mi)</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for car in vehicles %}
+            <tr data-vehicle="{{ car.filter_key }}" data-make="{{ car.make }}" data-model="{{ car.model }}" data-year="{{ car.year }}" data-price="{{ car.price }}" data-miles="{{ car.miles }}" data-distance="{{ car.distance_miles }}">
+                <td>{{ car.make }}</td>
+                <td>{{ car.model }}</td>
+                <td>{{ car.year }}</td>
+                <td>{{ car.version or '' }}</td>
+                <td>{{ car.color }}</td>
+                <td>{{ car.miles }}</td>
+                <td>{{ car.days_on_lot }}</td>
+                <td>{{ car.price }}</td>
+                <td>{{ car.msrp }}</td>
+                <td>
+                    <a href="{{ car.vdp_url }}" target="_blank">
+                        {{ car.dealer_name }} ({{ car.dealer_city }}, {{ car.dealer_state }})
+                    </a>
+                </td>
+                <td>{{ car.distance_miles }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
+<script src="/static/vehicles.js"></script>
+</html>

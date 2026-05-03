@@ -1,3 +1,6 @@
 flask
 gunicorn
 requests
+pgeocode
+requests-cache
+pytest
