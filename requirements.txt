@@ -1,5 +1,7 @@
 gunicorn
+flask
 requests
 pgeocode
 requests-cache
+python-dotenv
 pytest
